@@ -47,11 +47,9 @@ class Scene:
         self.scale = 1.0
         self.glm: Optional[JAG2GLM.GLM] = None
         self.gla: Optional[JAG2GLA.GLA] = None
-        self.surfaces_on = set()
-        self.surfaces_off = set()
 
     # Fills scene from on GLM file
-    def loadFromGLM(self, glm_filepath_rel: str, skin_rel: str = "") -> Tuple[bool, ErrorMessage]:
+    def loadFromGLM(self, glm_filepath_rel: str, selected_skin_data: dict) -> Tuple[bool, ErrorMessage]:
         success, glm_filepath_abs = JAFilesystem.FindFile(
             glm_filepath_rel, self.basepath, ["glm"])
         if not success:
@@ -59,86 +57,17 @@ class Scene:
                   glm_filepath_rel + ".glm", sep="")
             return False, ErrorMessage(f".glm file {glm_filepath_rel} not found in basepath ({self.basepath})")
         
-        # Load skin prefs before loading GLM
-        if skin_rel:
-            success, message = self._loadSkinPrefs(skin_rel)
-            if not success:
-                print(f"Warning: Could not load skin prefs: {message}")
-
-        if len(self.surfaces_on) == 0 and len(self.surfaces_off) == 0 and skin_rel:
-            print("Warning: No surfaces_on/off found in skin file - fallback to model default")        
+        if len(selected_skin_data.get("prefs", {}).get("surfaces_on", {})) == 0 and len(selected_skin_data.get("prefs", {}).get("surfaces_off", {})) == 0 and selected_skin_data:
+            print("Warning: No surfaces_on/off found in skin file - need might need to tweak g2skin file if you see pink textures!")
+        else:
+            print(f"Loaded {len(selected_skin_data.get('prefs', {}).get('surfaces_on', {}))} surfaces_on and {len(selected_skin_data.get('prefs', {}).get('surfaces_off', {}))} surfaces_off from skin data")        
         
         self.glm = JAG2GLM.GLM()
-
-        g2skin_definition = {
-            "surfaces_off": list(self.surfaces_off),
-            "surfaces_on": list(self.surfaces_on)
-        }
-        success, message = self.glm.loadFromFile(glm_filepath_abs, g2skin_definition)
+        
+        success, message = self.glm.loadFromFile(glm_filepath_abs, selected_skin_data)
         if not success:
             return False, message
         return True, NoError
-
-    def _loadSkinPrefs(self, skin_rel: str) -> Tuple[bool, ErrorMessage]:
-        """Load surfaces_on/off from .g2skin prefs block"""
-        success, skin_abs = JAFilesystem.FindFile("models/characters/skins/" + skin_rel,
-                                                self.basepath, ["g2skin"])
-        if not success:
-            return False, ErrorMessage(f"Skin file not found: {skin_rel}")
-
-        try:
-            self.surfaces_on = set()
-            self.surfaces_off = set()
-
-            with open(skin_abs, "r", encoding="utf-8", errors="ignore") as file:
-                lines = file.readlines()
-
-            stack: list[str] = []
-
-            for raw in lines:
-                line = raw.strip()
-                if not line or line.startswith("//") or line.startswith("#"):
-                    continue
-
-                # Header + { auf einer Zeile
-                if line.endswith("{") and not line.startswith("{"):
-                    header = line.split("{", 1)[0].strip()
-                    stack.append(header)
-                    continue
-
-                # Header ohne { → kommt in nächster Zeile
-                if line in ("prefs", "models", "surfaces_on", "surfaces_off",
-                            "material", "group"):
-                    stack.append(line)
-                    continue
-
-                # Nur Klammer öffnen
-                if line == "{":
-                    continue
-
-                # Blockende
-                if line == "}":
-                    if stack:
-                        stack.pop()
-                    continue
-
-                # Namen in surfaces_on/off
-                if stack and stack[-1] in ("surfaces_on", "surfaces_off") and line.startswith("name"):
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        value = parts[-1].strip('"')
-                        if value:
-                            if stack[-1] == "surfaces_on":
-                                self.surfaces_on.add(value)
-                            else:
-                                self.surfaces_off.add(value)
-
-            print(f"Loaded skin prefs: {len(self.surfaces_on)} Surfaces ON, {len(self.surfaces_off)} Surfaces OFF")
-            return True, NoError
-
-        except Exception as e:
-            return False, ErrorMessage(f"Error parsing skin file: {e}")
-
 
     # Loads scene from on GLA file
     def loadFromGLA(self, gla_filepath_rel: str, loadAnimations=JAG2GLA.AnimationLoadMode.NONE, startFrame=0, numFrames=1) -> Tuple[bool, ErrorMessage]:
@@ -205,7 +134,7 @@ class Scene:
 
     # "saves" the scene to blender
     # skeletonFixes is an enum with possible skeleton fixes - e.g. 'JKA' for connection- and
-    def saveToBlender(self, scale, skin_rel, guessTextures: bool, useAnimation: bool, skeletonFixes: JAG2Constants.SkeletonFixes) -> Tuple[bool, ErrorMessage]:
+    def saveToBlender(self, scale, selected_skin_data: dict, guessTextures: bool, useAnimation: bool, skeletonFixes: JAG2Constants.SkeletonFixes) -> Tuple[bool, ErrorMessage]:
         # is there already a scene root in blender?
         scene_root = findSceneRootObject()
         if scene_root:
@@ -224,7 +153,7 @@ class Scene:
             return False, message
         if self.glm:
             success, message = self.glm.saveToBlender(
-                self.basepath, optional_cast(JAG2GLA.GLA, self.gla), scene_root, skin_rel, guessTextures)
+                self.basepath, optional_cast(JAG2GLA.GLA, self.gla), scene_root, selected_skin_data, guessTextures)
             if not success:
                 return False, message
         return True, NoError

@@ -234,8 +234,8 @@ class MdxmSurfaceData:
         #print("name: " + self.name.decode() + ", flags: " + str(self.flags) )
 
         if g2skin_defintion != None:
-            all_off_flag_surface_names = g2skin_defintion["surfaces_off"]
-            all_on_flag_surface_names = g2skin_defintion["surfaces_on"]
+            all_off_flag_surface_names = list(g2skin_defintion.get("prefs",{}).get("surfaces_off", {}).values())
+            all_on_flag_surface_names = list(g2skin_defintion.get("prefs",{}).get("surfaces_on", {}).values())
             raw_name = self.name.decode()
             clean_name = raw_name.split("\x00", 1)[0]
             if clean_name is not None and clean_name in all_on_flag_surface_names:
@@ -552,8 +552,7 @@ class MdxmSurface:
         self.boneReferences.extend(struct.unpack(
             str(self.numBoneReferences) + "i", file.read(4 * self.numBoneReferences)))
 
-        print(
-            f"surface {self.index+1}: numBoneReferences: {self.numBoneReferences}")
+        #print(f"surface {self.index+1}: numBoneReferences: {self.numBoneReferences}")
         #for i, boneRef in enumerate(self.boneReferences):
             #print(f"bone ref {i}: {boneRef}")
 
@@ -1121,7 +1120,7 @@ class GLM:
     # basepath: ../GameData/.../
     # gla: JAG2GLA.GLA object - the Skeleton (for weighting purposes)
     # scene_root: "scene_root" object in Blender
-    def saveToBlender(self, basepath: str, gla: JAG2GLA.GLA, scene_root: bpy.types.Object, skin_rel: str, guessTextures: bool) -> Tuple[bool, ErrorMessage]:
+    def saveToBlender(self, basepath: str, gla: JAG2GLA.GLA, scene_root: bpy.types.Object, selected_skin_data: dict, guessTextures: bool) -> Tuple[bool, ErrorMessage]:
         if gla.header.numBones != self.header.numBones:
             return False, ErrorMessage(f"Bone number mismatch - gla has {gla.header.numBones} bones, model uses {self.header.numBones}. Maybe you're trying to load a jk2 model with the jk3 skeleton or vice-versa?")
         print("creating model...")
@@ -1136,7 +1135,7 @@ class GLM:
             boneNames={bone.index: bone.name for bone in gla.skeleton.bones}
         )
         success, message = data.materialManager.init(
-            basepath, skin_rel, guessTextures)
+            basepath, selected_skin_data, guessTextures)
         if not success:
             return False, message
 

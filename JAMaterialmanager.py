@@ -35,36 +35,36 @@ class MaterialManager():
         self.useSkin = False
         self.initialized = False
 
-    def init(self, basepath: str, skin_rel: str, guessTextures: bool):
+    def init(self, basepath: str, selected_g2skin_data: dict, guessTextures: bool):
         self.basepath = basepath
         self.guessTextures = guessTextures
         self.skin = {}
 
-        if skin_rel != "":
-            success, skin_abs = JAFilesystem.FindFile(skin_rel, self.basepath, ["g2skin"])
-            if not success:
-                return False, ErrorMessage(f"Skin file not found: {skin_rel}")
+        # sicherstellen, dass wir Daten haben
+        if not selected_g2skin_data or "materials" not in selected_g2skin_data:
+            return False, ErrorMessage("Kein gültiges g2skin-JSON übergeben")
 
-            with open(skin_abs, "r") as file:
-                current_material_name = None
-                for line in file:
-                    line = line.strip()
-                    if line.startswith("material"):
-                        current_material_name = None
-                    elif line.startswith("name") and current_material_name is None:
-                        # Materialname auf oberster Ebene
-                        current_material_name = line.split()[-1].strip('"')
-                    elif (line.startswith("texture1") or line.startswith("shader1")) and current_material_name is not None:
-                        key, value = line.split(maxsplit=1)
-                        print(f"Mapping material '{current_material_name}' to texture/shader '{value.strip()}'")
-                        self.skin[current_material_name] = value.strip('"')
+        for mat in selected_g2skin_data.get("materials", []):
+            mat_name = mat.get("name")
+            if not mat_name:
+                continue
 
+            # Falls mehrere groups existieren, nimm den ersten Treffer
+            for grp in mat.get("groups", []):
+                if "texture1" in grp:
+                    tex = grp["texture1"].strip('"')
+                    print(f"Mapping material '{mat_name}' to texture '{tex}'")
+                    self.skin[mat_name] = tex
+                    break
+                elif "shader1" in grp:
+                    shader = grp["shader1"].strip('"')
+                    print(f"Mapping material '{mat_name}' to shader '{shader}'")
+                    self.skin[mat_name] = shader
+                    break
 
-            self.useSkin = True
-
+        self.useSkin = True
         self.initialized = True
         return True, NoError
-
 
     def getMaterial(self, name, bsShader, shader_def: str = ""):
         """

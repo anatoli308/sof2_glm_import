@@ -652,9 +652,14 @@ class GLMImport(bpy.types.Operator):
             return {'CANCELLED'}
         
         #try to get available shaders for the glm name in base/shaders folder
-        available_shaders = self._get_shaders()
+        #available_shaders = self._get_shaders()
         #if available_skins:
         #    self.skin = selected_skin  # default auf ersten Skin setzen
+        
+        selected_skin_data = _cached_skin_data.get(selected_skin)
+        if not selected_skin_data:
+            self.report({'ERROR'}, f"Skin data for {selected_skin} not found or could not be parsed.")
+            return {'CANCELLED'}
         
         print("\n== GLM Import ==\n")
         # initialize paths
@@ -666,7 +671,7 @@ class GLMImport(bpy.types.Operator):
         scale = self.scale / 100
         # load GLM
         scene = JAG2Scene.Scene(basepath)
-        success, message = scene.loadFromGLM(filepath, self.skin)
+        success, message = scene.loadFromGLM(filepath, selected_skin_data)
         if not success:
             self.report({'ERROR'}, message)
             return {'FINISHED'}
@@ -681,18 +686,10 @@ class GLMImport(bpy.types.Operator):
         if not success:
             self.report({'ERROR'}, message)
             return {'FINISHED'}
-        # output to blender
-        skin = ""
-        if hasattr(self.skin, '__iter__') and len(self.skin) > 0:
-            if self.skin.endswith(".g2skin"):
-                skin = "models/characters/skins/" + self.skin
-            else:
-                self.report({'ERROR'}, "Skin must end with .g2skin MAKE SURE YOU SELECT A RIGHT AND VALID SKIN!")
-                return {'FINISHED'}
 
         guessTextures = True # Anatoli - True for now dont need that in SoF2 idk what it does
         success, message = scene.saveToBlender(
-            scale, skin, guessTextures, loadAnimations != JAG2GLA.AnimationLoadMode.NONE, SkeletonFixes[self.skeletonFixes])
+            scale, selected_skin_data, guessTextures, loadAnimations != JAG2GLA.AnimationLoadMode.NONE, SkeletonFixes[self.skeletonFixes])
         if not success:
             self.report({'ERROR'}, message)
         return {'FINISHED'}
