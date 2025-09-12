@@ -30,6 +30,184 @@ from . import JAG2GLA
 from . import JAFilesystem
 from .JAG2Constants import SkeletonFixes
 
+# ---------------- Tokenizer ----------------
+_token_re = re.compile(r'"[^"]*"|\{|\}|[^\s\{\}]+')
+
+
+def _tokenize(text: str) -> List[str]:
+    """Return list of tokens: quoted strings, {, }, or bare tokens."""
+    return _token_re.findall(text)
+
+
+# ---------------- Helper: store value under key, convert to list on duplicates ----------------
+def _store_value(d: Dict[str, Any], key: str, val: Any):
+    """Store val under d[key]; convert to list if key repeats."""
+    if key in d:
+        existing = d[key]
+        if isinstance(existing, list):
+            existing.append(val)
+        else:
+            d[key] = [existing, val]
+    else:
+        d[key] = val
+
+
+# ---------------- Recursive parser ----------------
+def _parse_block(tokens: List[str], idx: int = 0) -> Tuple[Dict[str, Any], int]:
+    """
+    Parse tokens starting at idx inside a block (expecting tokens with no leading '{').
+    Returns (obj, next_index) where next_index points to token AFTER the closing '}' (or EOF).
+    Structure: dict with arbitrary keys; duplicate keys become lists.
+    Anonymous inner blocks are stored under key "__anon__" as a list of their dicts.
+    """
+    obj: Dict[str, Any] = {}
+    anon_list: List[Any] = []
+    L = len(tokens)
+    i = idx
+
+    while i < L:
+        tok = tokens[i]
+
+        # closing brace -> end of this block
+        if tok == "}":
+            if anon_list:
+                # attach anonymous blocks if any
+                _store_value(obj, "__anon__", anon_list if len(anon_list) > 1 else anon_list[0])
+            return obj, i + 1
+
+        # opening brace without key -> anonymous block
+        if tok == "{":
+            inner, next_i = _parse_block(tokens, i + 1)
+            anon_list.append(inner)
+            i = next_i
+            continue
+
+        # normal token: treat as potential key
+        key = tok.strip('"')
+        i += 1
+
+        # lookahead
+        if i >= L:
+            # key at EOF -> treat as flag with True
+            _store_value(obj, key, True)
+            break
+
+        nxt = tokens[i]
+
+        if nxt == "{":
+            # Key { ... }  -> named block without explicit value
+            inner, next_i = _parse_block(tokens, i + 1)
+            # store block (as dict). If many blocks with same key -> list
+            _store_value(obj, key, inner)
+            i = next_i
+            continue
+
+        # nxt is not '{' -> it's a value (could be quoted or bare)
+        value = nxt.strip('"')
+        i += 1
+
+        # check if after value there is a block: Key Value { ... }
+        if i < L and tokens[i] == "{":
+            inner, next_i = _parse_block(tokens, i + 1)
+            # put value inside inner under special key "_value" to not lose it
+            # if inner already had _value, we keep both by converting to list under "_value"
+            if "_value" in inner:
+                existing = inner["_value"]
+                if isinstance(existing, list):
+                    existing.append(value)
+                else:
+                    inner["_value"] = [existing, value]
+            else:
+                inner["_value"] = value
+            _store_value(obj, key, inner)
+            i = next_i
+            continue
+        else:
+            # simple key:value pair
+            _store_value(obj, key, value)
+            continue
+
+    # EOF reached (no closing brace)
+    if anon_list:
+        _store_value(obj, "__anon__", anon_list if len(anon_list) > 1 else anon_list[0])
+    return obj, i
+
+
+# ---------------- Public parser for one NPC text ----------------
+#TODO improve add/improve handling
+def parse_npc_text(text: str) -> Dict[str, Any]:
+    """
+    Parse whole NPC file text into nested dicts/lists.
+    Top-level may contain one or multiple top blocks (e.g., CharacterTemplate { ... }).
+    Returns a dict mapping top-level block names to their parsed content,
+    or a dict with keys/values if file contains direct key:value at top-level.
+    """
+    # remove windows CRs but keep newlines
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    # remove trailing comments starting with // or # (but don't try to be too smart about inline quotes)
+    # We'll remove //... and #... until eol
+    text = re.sub(r'//.*', '', text)
+    text = re.sub(r'#.*', '', text)
+
+    tokens = _tokenize(text)
+    i = 0
+    L = len(tokens)
+    result: Dict[str, Any] = {}
+
+    while i < L:
+        tok = tokens[i]
+        if tok == "{":
+            # anonymous top-level block (rare) -> parse and append under "__anon__"
+            inner, next_i = _parse_block(tokens, i + 1)
+            _store_value(result, "__anon__", inner)
+            i = next_i
+            continue
+
+        # read top-level name
+        name = tok.strip('"')
+        i += 1
+        # expect next token is '{' (if not, maybe it's key value at top)
+        if i < L and tokens[i] == "{":
+            inner, next_i = _parse_block(tokens, i + 1)
+            _store_value(result, name, inner)
+            i = next_i
+            continue
+        else:
+            # top-level key value pairs (uncommon for .npc but supported)
+            if i < L:
+                val = tokens[i].strip('"')
+                _store_value(result, name, val)
+                i += 1
+            else:
+                _store_value(result, name, True)
+
+    return result
+
+
+# ---------------- Folder loader ----------------
+def _get_npcs_folder(basepath: str) -> Dict[str, Dict[str, Any]]:
+    """
+    Scan basepath/npcs and parse all .npc files.
+    Returns mapping: filename -> parsed_dict
+    """
+    npc_dir = os.path.join(basepath, "npcs")
+    results: Dict[str, Dict[str, Any]] = {}
+    if not os.path.isdir(npc_dir):
+        return results
+
+    for fn in sorted(os.listdir(npc_dir)):
+        if not fn.lower().endswith(".npc"):
+            continue
+        path = os.path.join(npc_dir, fn)
+        try:
+            with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                txt = f.read()
+            parsed = parse_npc_text(txt)
+            results[fn] = parsed
+        except Exception as e:
+            print(f"Error parsing {path}: {e}")
+    return results
+
 # Cache-Variablen
 _cached_shader_query = None        # zuletzt gesuchte shader-name (query)
 _cached_shader_items = None        # enum-kompatible items list
@@ -655,6 +833,7 @@ class GLMImport(bpy.types.Operator):
         #available_shaders = self._get_shaders()
         #if available_skins:
         #    self.skin = selected_skin  # default auf ersten Skin setzen
+        #testData = _get_npcs_folder(self.basepath)
         
         selected_skin_data = _cached_skin_data.get(selected_skin)
         if not selected_skin_data:
