@@ -24,11 +24,237 @@ import re
 import json
 
 import bpy
-from typing import Tuple, List, Dict, Optional, cast, Set
+from typing import Tuple, List, Dict, Optional, cast, Set, Any
 from . import JAG2Scene
 from . import JAG2GLA
 from . import JAFilesystem
 from .JAG2Constants import SkeletonFixes
+
+# Cache-Variablen
+_cached_shader_query = None        # zuletzt gesuchte shader-name (query)
+_cached_shader_items = None        # enum-kompatible items list
+_cached_shader_data: Dict[str, Dict[str, Any]] = {}  # name -> parsed dict
+
+def _find_matching_brace(text: str, start_index: int) -> Optional[int]:
+    depth = 0
+    i = start_index
+    L = len(text)
+    while i < L:
+        c = text[i]
+        if c == '{':
+            depth += 1
+        elif c == '}':
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return None
+
+def _store_prop(props: Dict[str, Any], key: str, value: str):
+    if key in props:
+        existing = props[key]
+        if isinstance(existing, list):
+            existing.append(value)
+        else:
+            props[key] = [existing, value]
+    else:
+        props[key] = value
+
+def _parse_block_content(block_text: str) -> Dict[str, Any]:
+    """
+    Parse content inside one { ... } block.
+    Returns:
+      {
+        "tags": [...],
+        "props": {k: v},
+        "blocks": [ block_or_flat_dict, ... ]
+      }
+    - anonymous inner blocks are appended as flat dicts of their props/tags:
+        blocks: [ {"map": "...", "rgbGen": "..."}, ... ]
+    - named blocks are appended as dicts: {"key": key, "value": value_or_None, "content": {tags,props,blocks}}
+    """
+    res = {"tags": [], "props": {}, "blocks": []}
+    i = 0
+    L = len(block_text)
+
+    def _skip_whitespace_and_comments_no_newline():
+        """skip spaces and tabs and comments, but NOT newlines"""
+        nonlocal i
+        while i < L:
+            if block_text[i] in " \t\r":
+                i += 1
+                continue
+            if block_text.startswith("//", i):
+                nl = block_text.find("\n", i)
+                if nl == -1:
+                    i = L
+                    return
+                i = nl + 1
+                continue
+            break
+
+    def _read_token_no_newline():
+        """Read a token until whitespace or brace but do not skip newlines beforehand"""
+        nonlocal i
+        _skip_whitespace_and_comments_no_newline()
+        if i >= L:
+            return None
+        # token ends at whitespace or '{' or '}'
+        start = i
+        while i < L and not block_text[i].isspace() and block_text[i] not in "{}":
+            i += 1
+        return block_text[start:i]
+
+    while True:
+        _skip_whitespace_and_comments_no_newline()
+        if i >= L:
+            break
+
+        # anonymous block starting with '{'
+        if block_text[i] == '{':
+            match_end = _find_matching_brace(block_text, i)
+            if match_end is None:
+                break
+            inner = block_text[i+1:match_end]
+            inner_parsed = _parse_block_content(inner)
+            # flatten anonymous block: build flat dict from props and tags
+            flat = {}
+            # tags -> put them as keys with True or as list? we put tags as keys with True.
+            for t in inner_parsed.get("tags", []):
+                flat[t] = True
+            for k, v in inner_parsed.get("props", {}).items():
+                flat[k] = v
+            # if inner blocks exist, keep them nested under 'blocks'
+            if inner_parsed.get("blocks"):
+                flat["blocks"] = inner_parsed["blocks"]
+            res["blocks"].append(flat)
+            i = match_end + 1
+            continue
+
+        # read a key token (do NOT consume following newline here)
+        key = _read_token_no_newline()
+        if key is None:
+            break
+
+        # Now decide: is this a standalone tag (token on its own line) or a key/value?
+        # Find next newline position
+        nl = block_text.find('\n', i)
+        next_nl_idx = nl if nl != -1 else L
+
+        # find next non-space character before that newline
+        j = i
+        while j < next_nl_idx and block_text[j] in " \t\r":
+            j += 1
+        # if newline comes immediately (j == next_nl_idx), it's a tag
+        if j >= next_nl_idx:
+            # tag (token stands alone on its line)
+            res["tags"].append(key)
+            # advance i to after newline (if exists)
+            i = next_nl_idx + 1 if nl != -1 else L
+            continue
+
+        # else, there is something else on same line after key:
+        # it could be either a value or a brace starting a nested block
+        if block_text[j] == '{':
+            # key { ... }  (named block without value)
+            match_end = _find_matching_brace(block_text, j)
+            if match_end is None:
+                # malformed -> treat key as tag
+                res["tags"].append(key)
+                i = j + 1
+                continue
+            inner = block_text[j+1:match_end]
+            inner_parsed = _parse_block_content(inner)
+            res["blocks"].append({
+                "key": key,
+                "value": None,
+                "content": inner_parsed
+            })
+            i = match_end + 1
+            continue
+
+        # otherwise, there is a value on same line; read until brace or newline
+        # check if an opening brace appears later on same line
+        brace_on_line = block_text.find('{', i, next_nl_idx)
+        if brace_on_line != -1:
+            # value is substring i..brace_on_line
+            value = block_text[i:brace_on_line].strip()
+            # then block from brace_on_line..matching
+            match_end = _find_matching_brace(block_text, brace_on_line)
+            if match_end is None:
+                # malformed: store as prop until newline
+                value = block_text[i:next_nl_idx].strip()
+                _store_prop(res["props"], key, value)
+                i = next_nl_idx + 1 if nl != -1 else L
+                continue
+            inner = block_text[brace_on_line+1:match_end]
+            inner_parsed = _parse_block_content(inner)
+            # store as named block with value
+            res["blocks"].append({
+                "key": key,
+                "value": value if value != "" else None,
+                "content": inner_parsed
+            })
+            i = match_end + 1
+            continue
+        else:
+            # no brace on same line -> value ends at newline
+            value = block_text[i:next_nl_idx].strip()
+            _store_prop(res["props"], key, value)
+            i = next_nl_idx + 1 if nl != -1 else L
+            continue
+
+    return res
+
+def parse_shader_file(text: str) -> Dict[str, Dict]:
+    """
+    Parse whole shader file and return dict: shader_name -> parsed dict
+    Each parsed dict: {tags, props, blocks}
+    """
+    # remove line comments '//' and '#' (simple)
+    text_clean = re.sub(r'//.*', '', text)
+    text_clean = re.sub(r'#.*', '', text_clean)
+
+    results: Dict[str, Dict] = {}
+    i = 0
+    L = len(text_clean)
+
+    while True:
+        # skip whitespace
+        while i < L and text_clean[i].isspace():
+            i += 1
+        if i >= L:
+            break
+
+        # read shader name (until whitespace or '{')
+        start = i
+        while i < L and not text_clean[i].isspace() and text_clean[i] != '{':
+            i += 1
+        if i >= L:
+            break
+        name = text_clean[start:i].strip()
+
+        # skip whitespace until '{'
+        while i < L and text_clean[i].isspace():
+            i += 1
+        if i >= L or text_clean[i] != '{':
+            # no block start -> skip line
+            nl = text_clean.find('\n', i)
+            if nl == -1:
+                break
+            i = nl + 1
+            continue
+
+        brace_idx = i
+        match_end = _find_matching_brace(text_clean, brace_idx)
+        if match_end is None:
+            break
+        block_text = text_clean[brace_idx+1:match_end]
+        parsed = _parse_block_content(block_text)
+        results[name] = parsed
+        i = match_end + 1
+
+    return results
 
 # module-level cache for skins (operators in Blender often block new instance attributes)
 _cached_model_name = ""
@@ -224,6 +450,127 @@ class GLMImport(bpy.types.Operator):
     # register is a must-have when using WindowManager.invoke_props_popup
     bl_options = {'REGISTER', 'UNDO'}
     
+    # erwartet: parse_shader_file(text: str) -> Dict[name, parsed_dict]
+    # und modul-level caches:
+    # _cached_model_name, _cached_shader_query, _cached_shader_items, _cached_shader_data
+
+    def _get_shaders(self, context=None):
+        """
+        Lade und parse genau eine Shader-Datei:
+        <basepath>/shaders/{_cached_model_name}.shader
+
+        Liefert eine Enum-kompatible Liste von (name, name, description)
+        für alle Shader-Definitionen, die in dieser Datei vorkommen.
+        """
+        global _cached_shader_query, _cached_shader_items, _cached_shader_data, _cached_model_name
+
+        # bestimme query-name (primär _cached_model_name, fallback self.filepath)
+        selected_shader = _cached_model_name if _cached_model_name else os.path.splitext(
+            os.path.basename(self.filepath if hasattr(self, "filepath") else ""))[0]
+
+        if not selected_shader:
+            return [("None", "None", "No shader selected")]
+
+        selected_shader = selected_shader.strip()
+
+        # cache hit?
+        if _cached_shader_query == selected_shader and _cached_shader_items:
+            return _cached_shader_items
+
+        # dateipfad (Ordner "shaders" wie in deiner letzten Version)
+        shader_dir = os.path.join(self.basepath if hasattr(self, "basepath") else "", "shaders")
+        filename = f"{selected_shader}.shader"
+        file_path = os.path.join(shader_dir, filename)
+
+        items = []
+        shader_data = {}
+
+        if os.path.isfile(file_path):
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    txt = f.read()
+                parsed_defs = parse_shader_file(txt)  # dict name->parsed
+                shader_data.update(parsed_defs)
+                for name in parsed_defs.keys():
+                    items.append((name, name, f"shader: {name} (from {filename})"))
+            except Exception as e:
+                print(f"Error parsing shader file {file_path}: {e}")
+        else:
+            # fallback: keine Datei gefunden
+            items.append(("None", "None", f"No shader file {filename} found in {shader_dir}"))
+
+        # cache results
+        _cached_shader_query = selected_shader
+        _cached_shader_items = items
+        _cached_shader_data = shader_data
+
+        return items
+    
+    #UNUSED FOR NOW - will keep it for later use if needed to parse all shader files
+    def _get_shaders_folder(self, context=None):
+        """
+        Suche Shader-Definitionen im <basepath>/shader, basierend auf dem aktuellen
+        Modell-Namen, der in _cached_model_name gespeichert ist (Fallback: self.filepath).
+        Liefert Enum-kompatible items und cached die geparsten Shader-Daten in
+        _cached_shader_data (name -> parsed dict).
+        """
+        global _cached_shader_query, _cached_shader_items, _cached_shader_data, _cached_model_name
+
+        # 1) Bestimme den "selected shader" query: primär aus _cached_model_name
+        selected_shader = None
+        if _cached_model_name:
+            selected_shader = _cached_model_name
+        else:
+            # Fallback: model name aus self.filepath ableiten (wie bei _get_skins)
+            selected_shader = os.path.splitext(os.path.basename(self.filepath if hasattr(self, "filepath") else ""))[0]
+
+        if not selected_shader:
+            return [("None", "None", "No shader selected")]
+
+        selected_shader = selected_shader.strip()
+
+        # 2) Cache-Hit?
+        if _cached_shader_query == selected_shader and _cached_shader_items:
+            return _cached_shader_items
+
+        # 3) Suche shader-files im shader-Ordner
+        shader_dir = os.path.join(self.basepath if hasattr(self, "basepath") else "", "shaders")
+        items = []
+        shader_data = {}
+
+        if os.path.isdir(shader_dir):
+            for fn in os.listdir(shader_dir):
+                if not fn.lower().endswith(".shader"):
+                    continue
+                path = os.path.join(shader_dir, fn)
+                try:
+                    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                        txt = f.read()
+                    parsed_defs = parse_shader_file(txt)  # erwartet: dict name->parsed
+                    # sammle alle definitions
+                    for name, parsed in parsed_defs.items():
+                        shader_data[name] = parsed
+                        # tolerant match:
+                        # - exakt gleich
+                        # - name endswith selected_shader
+                        # - oder basename(name) == selected_shader
+                        basename = name.split("/")[-1]
+                        if (name == selected_shader) or name.endswith("/" + selected_shader) or (basename == selected_shader):
+                            items.append((name, name, f"shader: {name} (from {fn})"))
+                except Exception as e:
+                    print(f"Error reading shader file {path}: {e}")
+
+        if not items:
+            items.append(("None", "None", "No shader found"))
+
+        # 4) cache results
+        _cached_shader_query = selected_shader
+        _cached_shader_items = items
+        _cached_shader_data = shader_data
+
+        return items
+
+    
     def _get_skins(self, context=None):
         global _cached_model_name, _cached_items, _cached_skin_data
 
@@ -304,11 +651,10 @@ class GLMImport(bpy.types.Operator):
             self.report({'ERROR'}, "Kein gültiger Skin ausgewählt. Wähle zuerst einen Skin aus.")
             return {'CANCELLED'}
         
-        #TODO - ANATOLI: REWRITE g2skin_definition(JGA2Scene.py) into get_skins for better reuse and improved performance
-        # Skins nur einmal laden, wenn die Datei gewählt wurde
-        available_skins = self._get_skins()
+        #try to get available shaders for the glm name in base/shaders folder
+        available_shaders = self._get_shaders()
         #if available_skins:
-        #    self.skin = selected_skin  # default auf erste Skin setzen
+        #    self.skin = selected_skin  # default auf ersten Skin setzen
         
         print("\n== GLM Import ==\n")
         # initialize paths
