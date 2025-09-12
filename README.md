@@ -30,9 +30,10 @@ SOLLTE 0 ZURÜCKLIEFERN BEI ERFOLG
 
 
 Neue glm Models:
-1. g2skin Datei definieren/kopieren für textures.
-2. surfaces_on, surfaces_off definieren falls notwendig.
-3. importieren
+
+1. Alles startet im .npcs Ordner. Schaue dir die doc(SoF2_Character_NPCFile.doc) und .npc Dateien an.
+    - Erstelle neues .npc Template für deine Models
+    - Definiere 1-GroupInfo und X-CharacterTemplates für deine Models.
 
 
 ORGINAL README.md

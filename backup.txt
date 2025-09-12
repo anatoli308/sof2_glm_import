@@ -6,7 +6,7 @@ f, name, bsShader, shader_def: str = ""):
         """
         assert self.initialized
 
-        shader = JAStringhelper.decode(bsShader)
+        shader = SoF2Stringhelper.decode(bsShader)
         if self.useSkin and shader in self.skin:
             shader = self.skin[shader]
 
@@ -26,11 +26,11 @@ f, name, bsShader, shader_def: str = ""):
 
         # Hilfsfunktionen
         def _try_find_file(name_candidate: str):
-            # wrapper für JAFilesystem.FindFile: returns (success, abs_path) or (False, "")
+            # wrapper für SoF2Filesystem.FindFile: returns (success, abs_path) or (False, "")
             if not name_candidate:
                 return False, ""
             # if candidate contains extension already, FindFile should still work; try as-is
-            return JAFilesystem.FindFile(name_candidate, self.basepath, ["jpg", "png", "tga", "dds"])
+            return SoF2Filesystem.FindFile(name_candidate, self.basepath, ["jpg", "png", "tga", "dds"])
 
         def _find_sidecar_images(base_path_abs: str):
             """

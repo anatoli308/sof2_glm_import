@@ -44,7 +44,9 @@ def _parse_block(tokens: List[str], idx: int = 0) -> Tuple[Dict[str, Any], int]:
         if tok == "}":
             if anon_list:
                 # attach anonymous blocks if any
-                _store_value(obj, "__anon__", anon_list if len(anon_list) > 1 else anon_list[0])
+                _store_value(
+                    obj, "__anon__", anon_list if len(anon_list) > 1 else anon_list[0]
+                )
             return obj, i + 1
 
         # opening brace without key -> anonymous block
@@ -117,8 +119,8 @@ def parse_npc_text(text: str) -> Dict[str, Any]:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     # remove trailing comments starting with // or # (but don't try to be too smart about inline quotes)
     # We'll remove //... and #... until eol
-    text = re.sub(r'//.*', '', text)
-    text = re.sub(r'#.*', '', text)
+    text = re.sub(r"//.*", "", text)
+    text = re.sub(r"#.*", "", text)
 
     tokens = _tokenize(text)
     i = 0
@@ -182,15 +184,16 @@ def get_npcs_folder_data(basepath: str) -> Dict[str, Dict[str, Any]]:
 
 # ===== Shader and skin parsing helpers =====
 
+
 def _find_matching_brace(text: str, start_index: int) -> Optional[int]:
     depth = 0
     i = start_index
     L = len(text)
     while i < L:
         c = text[i]
-        if c == '{':
+        if c == "{":
             depth += 1
-        elif c == '}':
+        elif c == "}":
             depth -= 1
             if depth == 0:
                 return i
@@ -244,11 +247,11 @@ def _parse_block_content(block_text: str) -> Dict[str, Any]:
         if i >= L:
             break
 
-        if block_text[i] == '{':
+        if block_text[i] == "{":
             match_end = _find_matching_brace(block_text, i)
             if match_end is None:
                 break
-            inner = block_text[i+1:match_end]
+            inner = block_text[i + 1 : match_end]
             inner_parsed = _parse_block_content(inner)
             flat: Dict[str, Any] = {}
             for t in inner_parsed.get("tags", []):
@@ -265,7 +268,7 @@ def _parse_block_content(block_text: str) -> Dict[str, Any]:
         if key is None:
             break
 
-        nl = block_text.find('\n', i)
+        nl = block_text.find("\n", i)
         next_nl_idx = nl if nl != -1 else L
 
         j = i
@@ -276,23 +279,19 @@ def _parse_block_content(block_text: str) -> Dict[str, Any]:
             i = next_nl_idx + 1 if nl != -1 else L
             continue
 
-        if block_text[j] == '{':
+        if block_text[j] == "{":
             match_end = _find_matching_brace(block_text, j)
             if match_end is None:
                 res["tags"].append(key)
                 i = j + 1
                 continue
-            inner = block_text[j+1:match_end]
+            inner = block_text[j + 1 : match_end]
             inner_parsed = _parse_block_content(inner)
-            res["blocks"].append({
-                "key": key,
-                "value": None,
-                "content": inner_parsed
-            })
+            res["blocks"].append({"key": key, "value": None, "content": inner_parsed})
             i = match_end + 1
             continue
 
-        brace_on_line = block_text.find('{', i, next_nl_idx)
+        brace_on_line = block_text.find("{", i, next_nl_idx)
         if brace_on_line != -1:
             value = block_text[i:brace_on_line].strip()
             match_end = _find_matching_brace(block_text, brace_on_line)
@@ -301,13 +300,15 @@ def _parse_block_content(block_text: str) -> Dict[str, Any]:
                 _store_prop(res["props"], key, value)
                 i = next_nl_idx + 1 if nl != -1 else L
                 continue
-            inner = block_text[brace_on_line+1:match_end]
+            inner = block_text[brace_on_line + 1 : match_end]
             inner_parsed = _parse_block_content(inner)
-            res["blocks"].append({
-                "key": key,
-                "value": value if value != "" else None,
-                "content": inner_parsed
-            })
+            res["blocks"].append(
+                {
+                    "key": key,
+                    "value": value if value != "" else None,
+                    "content": inner_parsed,
+                }
+            )
             i = match_end + 1
             continue
         else:
@@ -320,8 +321,8 @@ def _parse_block_content(block_text: str) -> Dict[str, Any]:
 
 
 def parse_shader_file(text: str) -> Dict[str, Dict]:
-    text_clean = re.sub(r'//.*', '', text)
-    text_clean = re.sub(r'#.*', '', text_clean)
+    text_clean = re.sub(r"//.*", "", text)
+    text_clean = re.sub(r"#.*", "", text_clean)
 
     results: Dict[str, Dict] = {}
     i = 0
@@ -334,7 +335,7 @@ def parse_shader_file(text: str) -> Dict[str, Dict]:
             break
 
         start = i
-        while i < L and not text_clean[i].isspace() and text_clean[i] != '{':
+        while i < L and not text_clean[i].isspace() and text_clean[i] != "{":
             i += 1
         if i >= L:
             break
@@ -342,8 +343,8 @@ def parse_shader_file(text: str) -> Dict[str, Dict]:
 
         while i < L and text_clean[i].isspace():
             i += 1
-        if i >= L or text_clean[i] != '{':
-            nl = text_clean.find('\n', i)
+        if i >= L or text_clean[i] != "{":
+            nl = text_clean.find("\n", i)
             if nl == -1:
                 break
             i = nl + 1
@@ -353,7 +354,7 @@ def parse_shader_file(text: str) -> Dict[str, Dict]:
         match_end = _find_matching_brace(text_clean, brace_idx)
         if match_end is None:
             break
-        block_text = text_clean[brace_idx+1:match_end]
+        block_text = text_clean[brace_idx + 1 : match_end]
         parsed = _parse_block_content(block_text)
         results[name] = parsed
         i = match_end + 1
@@ -363,30 +364,30 @@ def parse_shader_file(text: str) -> Dict[str, Dict]:
 
 def _find_block_by_keyword(text: str, keyword: str) -> List[Tuple[str, int, int]]:
     results = []
-    for m in re.finditer(r'\b' + re.escape(keyword) + r'\b', text):
+    for m in re.finditer(r"\b" + re.escape(keyword) + r"\b", text):
         idx = m.end()
         while idx < len(text) and text[idx].isspace():
             idx += 1
-        if idx >= len(text) or text[idx] != '{':
+        if idx >= len(text) or text[idx] != "{":
             continue
         brace_open = idx
         depth = 0
         i = idx
         while i < len(text):
             c = text[i]
-            if c == '{':
+            if c == "{":
                 depth += 1
-            elif c == '}':
+            elif c == "}":
                 depth -= 1
                 if depth == 0:
-                    content = text[brace_open+1:i]
-                    results.append((content, brace_open, i+1))
+                    content = text[brace_open + 1 : i]
+                    results.append((content, brace_open, i + 1))
                     break
             i += 1
     return results
 
 
-_val_re = re.compile(r'''\s*([^\s]+)\s+(?:"([^"]+)"|'([^']+)'|([^\s]+))''')
+_val_re = re.compile(r"""\s*([^\s]+)\s+(?:"([^"]+)"|'([^']+)'|([^\s]+))""")
 
 
 def _parse_kv_block(block_text: str) -> Dict[str, str]:
@@ -395,8 +396,8 @@ def _parse_kv_block(block_text: str) -> Dict[str, str]:
         line = raw_line.strip()
         if not line:
             continue
-        line = re.sub(r'//.*$', '', line)
-        line = re.sub(r'#.*$', '', line)
+        line = re.sub(r"//.*$", "", line)
+        line = re.sub(r"#.*$", "", line)
         if not line:
             continue
         m = _val_re.match(line)
@@ -408,8 +409,8 @@ def _parse_kv_block(block_text: str) -> Dict[str, str]:
 
 
 def parse_g2skin_to_json(text: str) -> Dict:
-    text_clean = re.sub(r'//.*', '', text)
-    text_clean = re.sub(r'#.*', '', text_clean)
+    text_clean = re.sub(r"//.*", "", text)
+    text_clean = re.sub(r"#.*", "", text_clean)
 
     result: Dict[str, Any] = {"prefs": {}, "materials": []}
 
@@ -430,9 +431,13 @@ def parse_g2skin_to_json(text: str) -> Dict:
 
     for mat_content, _, _ in _find_block_by_keyword(text_clean, "material"):
         mat: Dict[str, Any] = {}
-        name_match = re.search(r'name\s+(?:"([^"]+)"|\'([^\']+)\'|([^\s{]+))', mat_content)
+        name_match = re.search(
+            r'name\s+(?:"([^"]+)"|\'([^\']+)\'|([^\s{]+))', mat_content
+        )
         if name_match:
-            mat["name"] = name_match.group(1) or name_match.group(2) or name_match.group(3)
+            mat["name"] = (
+                name_match.group(1) or name_match.group(2) or name_match.group(3)
+            )
 
         groups_list: List[Dict[str, str]] = []
         for grp_content, _, _ in _find_block_by_keyword(mat_content, "group"):
@@ -440,8 +445,8 @@ def parse_g2skin_to_json(text: str) -> Dict:
             groups_list.append(grp_kv)
         mat["groups"] = groups_list
 
-        top_level_kv = _parse_kv_block(re.sub(r'group\s*{[\s\S]*?}', '', mat_content))
-        top_level_kv.pop('name', None)
+        top_level_kv = _parse_kv_block(re.sub(r"group\s*{[\s\S]*?}", "", mat_content))
+        top_level_kv.pop("name", None)
         if top_level_kv:
             mat["props"] = top_level_kv
 

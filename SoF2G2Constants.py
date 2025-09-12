@@ -1,25 +1,5 @@
-# ##### BEGIN GPL LICENSE BLOCK #####
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software Foundation,
-#  Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# ##### END GPL LICENSE BLOCK #####
-
-# length of file path strings
 from enum import Enum
 from typing import Dict, List
-
 
 MAX_QPATH = 64  # cannot be changed without adjusting file format & engine
 
@@ -28,7 +8,7 @@ GLA_IDENT = b"2LGA"
 GLA_VERSION = 6
 
 # glm format
-GLM_IDENT = b'2LGM'
+GLM_IDENT = b"2LGM"
 GLM_VERSION = 6
 
 SURFACEFLAG_TAG = 0b1
@@ -43,8 +23,8 @@ BONE_ANGLE_ERROR_MARGIN = 0.996
 
 
 class SkeletonFixes(Enum):
-    NONE = 'NONE'
-    JKA_HUMANOID = 'JKA_HUMANOID'
+    NONE = "NONE"
+    JKA_HUMANOID = "JKA_HUMANOID"
 
 
 # bones to which the parent (with multiple children) should preferably connect
@@ -63,8 +43,8 @@ PRIORITY_BONES: Dict[SkeletonFixes, List[str]] = {
         "lhand",
         # spine - ignore shoulders and legs
         "cervical",
-        "lower_lumbar"
-    ]
+        "lower_lumbar",
+    ],
 }
 
 # bones that get different parents
@@ -75,7 +55,6 @@ PARENT_CHANGES: Dict[SkeletonFixes, Dict[int, int]] = {
         #  shoulder fixes
         25: 24,  # rhumerus gets parent rclavical
         38: 37,  # lhumerus gets parent lclavical
-
         #  hand fixes
         # r_d[124]_j1 to rhand
         30: 29,
@@ -94,6 +73,6 @@ PARENT_CHANGES: Dict[SkeletonFixes, Dict[int, int]] = {
         # l_d[124]_j2 to l_d[124]_j2
         44: 43,
         46: 45,
-        48: 47
-    }
+        48: 47,
+    },
 }

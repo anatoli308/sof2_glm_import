@@ -1,8 +1,9 @@
 from .mod_reload import reload_modules
+
 reload_modules(locals(), __package__, [], [".casts"])  # nopep8
 
-from typing import List, NewType, Optional, Tuple, TypeVar
-from .casts import optional_list_cast
+from typing import List, NewType, Optional, Tuple, TypeVar  # noqa: E402
+from .casts import optional_list_cast  # noqa: E402
 
 ErrorMessage = NewType("ErrorMessage", str)
 NoError = ErrorMessage("")

@@ -1,9 +1,9 @@
 from typing import List, Optional, Union, cast
-import mathutils
+import mathutils  # pyright: ignore[reportMissingImports]
 from typing import Any, TypeVar, Type
 
-T = TypeVar('T')
-U = TypeVar('U')
+T = TypeVar("T")
+U = TypeVar("U")
 
 # Aliases for type casts with stricter semantics.
 # These are unchecked, but should help identify dangerous code pieces.
@@ -30,6 +30,7 @@ def optional_list_cast(t: Type[List[T]], v: List[Optional[T]]) -> List[T]:
 def union_cast(t: Type[T], v: Union[T, U]) -> T:
     """A cast from a union to one of its elements"""
     return cast(t, v)
+
 
 # A cast used to turn A | B into A or B, for properties that accept unions in the setter but return a fixed type in the setter.
 # Blender uses this extensively to allow assigning sequences in place of vectors and matrices,
