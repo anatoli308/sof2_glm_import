@@ -26,6 +26,9 @@ from .casts import downcast
 from .error_types import ErrorMessage, NoError
 
 import bpy
+import os
+
+log_level = os.getenv("LOG_LEVEL", "INFO")
 
 class MaterialManager():
     def __init__(self):
@@ -51,14 +54,16 @@ class MaterialManager():
 
             # Falls mehrere groups existieren, nimm den ersten Treffer
             for grp in mat.get("groups", []):
-                if "texture1" in grp:
+                if "texture1" in grp: # TODO Vermutlich mehr als texture1 - textureX möglich erweitern!
                     tex = grp["texture1"].strip('"')
-                    print(f"Mapping material '{mat_name}' to texture '{tex}'")
+                    if log_level =="DEBUG":
+                        print(f"Mapping material '{mat_name}' to texture '{tex}'")
                     self.skin[mat_name] = tex
                     break
                 elif "shader1" in grp:
                     shader = grp["shader1"].strip('"')
-                    print(f"Mapping material '{mat_name}' to shader '{shader}'")
+                    if log_level =="DEBUG": # TODO analog s.o.
+                        print(f"Mapping material '{mat_name}' to shader '{shader}'")
                     self.skin[mat_name] = shader
                     break
 

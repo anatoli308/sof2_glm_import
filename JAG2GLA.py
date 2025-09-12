@@ -18,7 +18,7 @@
 
 from .mod_reload import reload_modules
 reload_modules(locals(), __package__, ["JAStringhelper", "JAG2Constants", "JAG2Math", "MrwProfiler"], [".casts", ".error_types"])  # nopep8
-
+import os
 from . import JAStringhelper
 from . import JAG2Constants
 from . import JAG2Math
@@ -31,6 +31,8 @@ from enum import Enum
 import struct
 import bpy
 import mathutils
+
+log_level = os.getenv("LOG_LEVEL", "INFO")
 
 PROFILE = False
 # show progress & remaining time every 30 seconds.
@@ -518,7 +520,8 @@ class GLA:
         self.animation = MdxaAnimation()
 
     def loadFromFile(self, filepath_abs: str, loadAnimation: AnimationLoadMode, startFrame: int, numFrames: int) -> Tuple[bool, ErrorMessage]:
-        print("Loading {}...".format(filepath_abs))
+        if log_level == "DEBUG":
+            print("Loading {}...".format(filepath_abs))
         try:
             file: BinaryIO = open(filepath_abs, mode="rb")
         except IOError:

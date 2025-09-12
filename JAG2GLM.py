@@ -35,10 +35,11 @@ from .error_types import ErrorMessage, NoError, ensureListIsGapless
 
 import bpy
 import mathutils
+import os
 
+log_level = os.getenv("LOG_LEVEL", "INFO")
 
 BoneIndexMap = Dict[str, int]
-
 
 def buildBoneIndexLookupMap(gla_filepath_abs: str) -> Tuple[Optional[BoneIndexMap], ErrorMessage]:
     print("Loading gla file for bone name -> bone index lookup")
@@ -986,7 +987,8 @@ class GLM:
         if not success:
             return False, message
         profiler.stop("reading header")
-        self.header.print()
+        if log_level == "DEBUG":
+            self.header.print()
 
         # load surface hierarchy offsets
         profiler.start("reading surface hierarchy")

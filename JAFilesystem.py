@@ -21,7 +21,7 @@ import os
 # name of the directory containing base / the mod folders, e.g. gamedata for Jedi Academy (in lowercase)
 # TODO #9 / #33: SoF2 does not have a gamedata, make guessing more lenient
 DIRNAME = "gamedata"
-
+log_level = os.getenv("LOG_LEVEL", "INFO")
 
 # returns the prefix and the rest, e.g. ("/foo/bar/JKA/GameData/Base", "textures/img.jpg") (where GameData is DIRNAME)
 
@@ -83,7 +83,8 @@ def AbsPath(relpath, prefix):
 
 def FindFile(relpath, prefix, extensions):
     absPath = AbsPath(relpath, prefix)
-    print("Looking for file: " + absPath + " (extensions: " + str(extensions) + ")")
+    if log_level == "DEBUG":
+        print("Looking for file: " + absPath + " (extensions: " + str(extensions) + ")")
     if os.path.isfile(absPath):
         return True, absPath
     absPath = os.path.splitext(absPath)[0]
