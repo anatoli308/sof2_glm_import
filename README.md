@@ -28,6 +28,13 @@ SOLLTE 0 ZURÜCKLIEFERN BEI ERFOLG
 ## To install, go to the Blender User Preferences, click "Install Addon" and select this zip.
 
 
+
+Neue glm Models:
+1. g2skin Datei definieren/kopieren für textures.
+2. surfaces_on, surfaces_off definieren falls notwendig.
+3. importieren
+
+
 ORGINAL README.md
 ## Installation & Usage
 
