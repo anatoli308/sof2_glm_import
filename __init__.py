@@ -53,11 +53,15 @@ JAAseExportOp = JAAseExport.Operator
 
 
 def register():
-    import debugpy
-    debugpy.listen(("localhost", 5678))
-    print("Waiting for VSCode debugger...")
-    debugpy.wait_for_client()
-    print("Debugger attached")
+    load_dotenv()  # .env einlesen
+    
+    attach_to_vscode = os.getenv("ATTACH_VSCODE_DEBUG", "false").lower() == "true"
+    if attach_to_vscode:
+        import debugpy
+        debugpy.listen(("localhost", 5678))
+        print("Waiting for VSCode debugger...")
+        debugpy.wait_for_client()
+        print("Debugger attached")
     
     bpy.utils.register_class(JAAseExport.Operator)
     bpy.utils.register_class(JAPatchExport.Operator)

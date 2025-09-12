@@ -24,12 +24,16 @@ import re
 import json
 
 import bpy
-from typing import Tuple, cast
+from typing import Tuple, List, Dict, Optional, cast, Set
 from . import JAG2Scene
 from . import JAG2GLA
 from . import JAFilesystem
 from .JAG2Constants import SkeletonFixes
 
+# module-level cache for skins (operators in Blender often block new instance attributes)
+_cached_model_name = ""
+_cached_items = []    
+_cached_skin_data = {}   # filename -> parsed_dict
 
 def GetPaths(basepath, filepath) -> Tuple[str, str]:
     if basepath == "":
@@ -102,132 +106,116 @@ def _skin_contains_model(skin_path: str, model_name: str) -> bool:
         except Exception as e:
             print(f"Error checking skin {skin_path}: {e}")
             return False
-        
-import re
-from typing import Set, Dict, List
 
-def _normalize_token(tok: str) -> str:
-    """Kleine Normalisierung: entferne Quotes und trimme."""
-    return tok.strip().strip('"\'').strip()
-
-def parse_g2skin_for_ethnics(skin_path: str) -> Set[str]:
+# Hilfsfkt: finde Block-Inhalt nach einem Keyword, unterstützt geschachtelte { ... }.
+def _find_block_by_keyword(text: str, keyword: str) -> List[Tuple[str, int, int]]:
     """
-    Parse a .g2skin file and return a set of 'ethnic' / group names found.
-    Looks for:
-      - group { ... name "white" ... }
-      - group { ... name white ... }
-      - ethnic "..." or ethnicity ...
-    Ignores comments starting with // or # and handles nested blocks with a simple stack.
+    Returns list of tuples (block_content, start_index, end_index) for each occurrence of keyword { ... }.
     """
-    ethnics: Set[str] = set()
-    try:
-        with open(skin_path, 'r', encoding='utf-8', errors='ignore') as f:
-            lines = f.readlines()
-    except Exception as e:
-        print(f"Failed to open skin {skin_path}: {e}")
-        return ethnics
-
-    stack: List[str] = []
-    in_group = False
-
-    for raw in lines:
-        line = raw.strip()
-        if not line or line.startswith("//") or line.startswith("#"):
+    results = []
+    for m in re.finditer(r'\b' + re.escape(keyword) + r'\b', text):
+        # Suche erste öffnende Klammer nach dem Match
+        idx = m.end()
+        # skip whitespace to find '{'
+        while idx < len(text) and text[idx].isspace():
+            idx += 1
+        if idx >= len(text) or text[idx] != '{':
             continue
+        # now find matching brace
+        brace_open = idx
+        depth = 0
+        i = idx
+        while i < len(text):
+            c = text[i]
+            if c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    # content between brace_open+1 .. i-1
+                    content = text[brace_open+1:i]
+                    results.append((content, brace_open, i+1))
+                    break
+            i += 1
+    return results
 
-        # Header with { on same line: e.g. group {  or material { ... }
-        if line.endswith("{") and not line.startswith("{"):
-            header = line.split("{", 1)[0].strip()
-            stack.append(header)
-            in_group = (in_group or (header == "group"))
-            continue
+# Hilfsfkt: parse lines mit key value (value kann "quoted" oder unquoted sein)
+_val_re = re.compile(r'''\s*([^\s]+)\s+(?:"([^"]+)"|'([^']+)'|([^\s]+))''')
 
-        # Header alone (next line will be "{")
-        if line in ("prefs", "models", "surfaces_on", "surfaces_off", "material", "group"):
-            stack.append(line)
-            in_group = (in_group or (line == "group"))
-            continue
-
-        # opening brace alone
-        if line == "{":
-            # we don't know the header here — keep placeholder so closing brace works
-            stack.append("{")
-            continue
-
-        # closing brace
-        if line == "}":
-            if stack:
-                last = stack.pop()
-                # if we popped a header, update in_group
-                if last == "group":
-                    in_group = False
-                elif last == "{":
-                    # might have been anonymous, re-evaluate whether any 'group' is still in stack
-                    in_group = any(s == "group" for s in stack)
-            continue
-
-        # inside group-block: look for 'name' or 'ethnic'/'ethnicity'
-        if in_group:
-            # common patterns:
-            #   name   "white"
-            #   name   white
-            #   name "white"
-            #   ethnic "asian"
-            # use regex to capture key + possibly quoted value
-            m = re.match(r'(?i)\s*(name|ethnic|ethnicity)\s*(?:"([^"]+)"|\'([^\']+)\'|(\S+))', line)
-            if m:
-                key = m.group(1).lower()
-                value = m.group(2) or m.group(3) or m.group(4)
-                if value:
-                    ethnics.add(_normalize_token(value))
-                continue
-
-            # fallback: line may contain a quoted string as sole token (some files use just "white")
-            if line.startswith(('"', "'")):
-                # remove trailing comment if present
-                token = line.split("//", 1)[0].strip()
-                token = _normalize_token(token)
-                if token:
-                    ethnics.add(token)
-                continue
-
-        else:
-            # not in a group: still catch top-level 'ethnic' keys just in case
-            m2 = re.match(r'(?i)\s*(ethnic|ethnicity)\s*(?:"([^"]+)"|\'([^\']+)\'|(\S+))', line)
-            if m2:
-                value = m2.group(2) or m2.group(3) or m2.group(4)
-                if value:
-                    ethnics.add(_normalize_token(value))
-                continue
-
-    return ethnics
-
-def gather_all_skins_ethnics(skins_dir: str) -> Dict[str, Set[str]]:
+def _parse_kv_block(block_text: str) -> Dict[str, str]:
     """
-    Iterate all .g2skin files in skins_dir and return mapping:
-      filename -> set([...ethnics...])
+    Parse key value lines inside a simple block (no nested braces expected here).
+    Returns dict key->value (strings).
     """
-    result: Dict[str, Set[str]] = {}
-    if not os.path.isdir(skins_dir):
-        return result
-
-    for fn in os.listdir(skins_dir):
-        if not fn.lower().endswith(".g2skin"):
+    d: Dict[str, str] = {}
+    for raw_line in block_text.splitlines():
+        line = raw_line.strip()
+        if not line:
             continue
-        path = os.path.join(skins_dir, fn)
-        try:
-            ethnics = parse_g2skin_for_ethnics(path)
-            result[fn] = ethnics
-        except Exception as e:
-            print(f"Error parsing {path}: {e}")
-            result[fn] = set()
+        # remove inline comments starting with // or # (simple)
+        line = re.sub(r'//.*$', '', line)
+        line = re.sub(r'#.*$', '', line)
+        if not line:
+            continue
+        m = _val_re.match(line)
+        if m:
+            key = m.group(1)
+            val = m.group(2) or m.group(3) or m.group(4) or ""
+            d[key] = val
+    return d
+
+def parse_g2skin_to_json(text: str) -> Dict:
+    # Entferne Kommentarzeilen (grob)
+    text_clean = re.sub(r'//.*', '', text)
+    text_clean = re.sub(r'#.*', '', text_clean)
+
+    result = {"prefs": {}, "materials": []}
+
+    # -------- prefs block --------
+    prefs_blocks = _find_block_by_keyword(text_clean, "prefs")
+    if prefs_blocks:
+        prefs_text, _, _ = prefs_blocks[0]
+        # parse subblocks models, surfaces_on, surfaces_off
+        for sub in ("models", "surfaces_on", "surfaces_off"):
+            found = {}
+            subblocks = _find_block_by_keyword(prefs_text, sub)
+            if subblocks:
+                block_text, _, _ = subblocks[0]
+                found = _parse_kv_block(block_text)
+            result["prefs"][sub] = found
+    else:
+        result["prefs"]["models"] = {}
+        result["prefs"]["surfaces_on"] = {}
+        result["prefs"]["surfaces_off"] = {}
+
+    # -------- material blocks (kann mehrere geben) --------
+    for mat_content, _, _ in _find_block_by_keyword(text_clean, "material"):
+        mat: Dict = {}
+        # name kann innerhalb des material-blocks stehen
+        name_match = re.search(r'name\s+(?:"([^"]+)"|\'([^\']+)\'|([^\s{]+))', mat_content)
+        if name_match:
+            mat["name"] = name_match.group(1) or name_match.group(2) or name_match.group(3)
+
+        # finde alle group { ... } Blöcke innerhalb des material-blocks
+        groups_list: List[Dict[str, str]] = []
+        for grp_content, _, _ in _find_block_by_keyword(mat_content, "group"):
+            grp_kv = _parse_kv_block(grp_content)
+            groups_list.append(grp_kv)
+        mat["groups"] = groups_list
+
+        # optional: auch top-level keys in material (falls vorhanden)
+        # z.B. material { somekey value ... }
+        # Wir können zusätzlich alle simple kv pairs extrahieren, die nicht in groups waren:
+        top_level_kv = _parse_kv_block(re.sub(r'group\s*{[\s\S]*?}', '', mat_content))
+        # Entferne 'name' falls doppelt
+        top_level_kv.pop('name', None)
+        if top_level_kv:
+            mat["props"] = top_level_kv
+
+        result["materials"].append(mat)
+
     return result
 
-
-# module-level cache for skins (operators in Blender often block new instance attributes)
-_cached_model_name = ""
-_cached_items = []    
-  
 class GLMImport(bpy.types.Operator):
     '''Import GLM Operator.'''
     bl_idname = "import_scene.glm"
@@ -236,32 +224,34 @@ class GLMImport(bpy.types.Operator):
     # register is a must-have when using WindowManager.invoke_props_popup
     bl_options = {'REGISTER', 'UNDO'}
     
-    # Dynamische Enum für Skins
     def _get_skins(self, context=None):
-        # Use module-level cache because Blender operator instances often disallow new attributes
-        global _cached_model_name, _cached_items
+        global _cached_model_name, _cached_items, _cached_skin_data
 
-        # Determine model name from filepath (works when callback is called during registration too)
         model_name = os.path.splitext(os.path.basename(self.filepath if hasattr(self, "filepath") else ""))[0]
 
-        # If cached and same model, return cached items
         if model_name == _cached_model_name and _cached_items:
             print(f"Using cached skins for model:{model_name}, count: {len(_cached_items)}")
             return _cached_items
 
         items = []
-        # You can change this path or make it configurable
+        skin_data = {}
         skins_dir = os.path.join("D:/sof2/base/", "models", "characters", "skins")
         if os.path.exists(skins_dir):
             for filename in os.listdir(skins_dir):
                 if filename.lower().endswith(".g2skin"):
-                    # call module-level helper
                     skin_path = os.path.join(skins_dir, filename)
                     try:
                         if _skin_contains_model(skin_path, model_name):
-                            ethnics = parse_g2skin_for_ethnics(os.path.join(skins_dir, filename))
-                            ethnic_list = ", ".join(sorted(ethnics)) if ethnics else "none"
-                            items.append((filename, filename, f"Skin: {filename} (ethnics: {ethnic_list})"))
+                            with open(skin_path, "r", encoding="utf-8", errors="ignore") as f:
+                                text = f.read()
+                            parsed_dict = parse_g2skin_to_json(text)
+
+                            # Enum-kompatibel: description nur kurz
+                            desc = f"Skin: {filename}, materials={len(parsed_dict.get('materials', []))}"
+                            items.append((filename, filename, desc))
+
+                            # Daten separat ablegen
+                            skin_data[filename] = parsed_dict
 
                     except Exception as e:
                         print(f"Error while checking skin {skin_path}: {e}")
@@ -269,9 +259,9 @@ class GLMImport(bpy.types.Operator):
         if not items:
             items.append(("None", "None", "No skin found"))
 
-        # update module-level cache
         _cached_model_name = model_name
         _cached_items = items
+        _cached_skin_data = skin_data
         print("Available skins:", len(items))
         return items
 

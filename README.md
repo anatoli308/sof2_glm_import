@@ -9,6 +9,9 @@ hard modified and customized by me
 TESTED BLENDER VERSION: 4.5.3 LTS
 
 ## Install in Blender Pip
+-debugpy
+-python-dotenv
+
 Pakete installieren. In blender unter scripting:
 import ensurepip
 ensurepip.bootstrap()
@@ -18,8 +21,11 @@ subprocess.check_call([sys.executable, "-m", "pip", "install", "python-dotenv"])
 
 SOLLTE 0 ZURÜCKLIEFERN BEI ERFOLG
 
-## To install, go to the Blender User Preferences, click "Install Addon" and select this zip.
+## .env Anpassen
+- ATTACH_VSCODE_DEBUG=true|false (debugger default attach port 5678)
 
+
+## To install, go to the Blender User Preferences, click "Install Addon" and select this zip.
 
 
 ORGINAL README.md
