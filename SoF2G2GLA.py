@@ -669,6 +669,7 @@ class MdxaAnimation:
                 # **Set action frame range directly (0 to duration) for Unity compatibility**
                 action.frame_range = (0, duration) # TODO anatoli still not sure if unity need -1 or not 0based
                 
+                #TODO default FPS Anatoli wechselbar machen??
                 # **Set FPS for this specific clip**
                 clip_fps = clip.get("fps", 20)  # Get FPS from clip data
                 scene.render.fps = clip_fps
@@ -725,7 +726,7 @@ class MdxaAnimation:
                 print(f"Created action: {clip_name} with {duration} frames")
             
             # **Restore original FPS and set scene back to first frame**
-            scene.render.fps = 24  # Restore default FPS
+            scene.render.fps = 24  # Restore default FPS #TODO default FPS Anatoli wechselbar machen??
             scene.frame_current = 0
             
         else:
