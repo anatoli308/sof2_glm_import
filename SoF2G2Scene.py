@@ -73,6 +73,7 @@ class Scene:
         loadAnimations=SoF2G2GLA.AnimationLoadMode.NONE,
         startFrame=0,
         numFrames=1,
+        data_frames_file=dict(),
     ) -> Tuple[bool, ErrorMessage]:
         # create default skeleton if necessary (doing it here is a bit of a hack)
         if gla_filepath_rel == "*default":
@@ -90,7 +91,7 @@ class Scene:
             )
         self.gla = SoF2G2GLA.GLA()
         success, message = self.gla.loadFromFile(
-            gla_filepath_abs, loadAnimations, startFrame, numFrames
+            gla_filepath_abs, loadAnimations, startFrame, numFrames, data_frames_file
         )
         if not success:
             return False, message
@@ -154,6 +155,7 @@ class Scene:
         guessTextures: bool,
         useAnimation: bool,
         skeletonFixes: SoF2G2Constants.SkeletonFixes,
+        data_frames_file: dict,
     ) -> Tuple[bool, ErrorMessage]:
         # is there already a scene root in blender?
         scene_root = findSceneRootObject()
@@ -168,7 +170,7 @@ class Scene:
             bpy.context.scene.collection.objects.link(scene_root)
         # there's always a skeleton (even if it's *default)
         success, message = optional_cast(SoF2G2GLA.GLA, self.gla).saveToBlender(
-            scene_root, useAnimation, skeletonFixes
+            scene_root, useAnimation, skeletonFixes, data_frames_file
         )
         if not success:
             return False, message

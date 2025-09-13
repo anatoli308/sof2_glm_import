@@ -16,7 +16,8 @@ reload_modules(
 
 import os  # noqa: E402
 import bpy  # noqa: E402  # pyright: ignore[reportMissingImports]
-from typing import cast  # noqa: E402
+from typing import Any, Dict, List, Optional, Tuple, cast  # noqa: E402
+from copy import deepcopy  # noqa: E402
 
 from .SoF2G2Constants import SkeletonFixes  # noqa: E402
 
@@ -29,6 +30,10 @@ from . import SoF2G2GLA  # noqa: E402, F811
 from . import SoF2Filesystem  # noqa: E402
 from . import skl_parser  # noqa: E402
 from . import frames_parser  # noqa: E402
+from .SoF2G2PathMapper import map_frames_into_skl  # noqa: E402
+
+
+# Old mapping functions removed - now using SoF2G2PathMapper
 
 
 def find_skin_data_by_file_value(skin_data: dict, file_name: str):
@@ -257,6 +262,7 @@ class GLMImport(bpy.types.Operator):
                 "Model", None
             )
 
+            """
             character_skeleton_name = character_template.get("group_info", {}).get(
                 "Skeleton", None
             )
@@ -268,6 +274,7 @@ class GLMImport(bpy.types.Operator):
                 encoding="utf-8",
             ).read()
             data_skl_file = skl_parser.parse_skl(text)
+            """
 
             character_skeleton_name = character_template.get("group_info", {}).get(
                 "Skeleton", None
@@ -284,6 +291,12 @@ class GLMImport(bpy.types.Operator):
             ).read()
             data_frames_file = frames_parser.parse_frames(text)
 
+            """
+            mapped = map_frames_into_skl(
+                data_skl_file, data_frames_file, inplace=False, debug=False
+            )
+            print("Mapping completed!")
+            """
             character_template_skin_files = character_template.get(
                 "char_template", {}
             ).get("Skin", {})
@@ -344,6 +357,7 @@ class GLMImport(bpy.types.Operator):
                 loadAnimations,
                 cast(int, self.startFrame),
                 cast(int, self.numFrames),
+                data_frames_file
             )
             if not success:
                 self.report({"ERROR"}, message)
@@ -356,6 +370,7 @@ class GLMImport(bpy.types.Operator):
                 guessTextures,
                 loadAnimations != SoF2G2GLA.AnimationLoadMode.NONE,
                 SkeletonFixes[self.skeletonFixes],
+                data_frames_file
             )
             if not success:
                 self.report({"ERROR"}, message)

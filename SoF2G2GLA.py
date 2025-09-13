@@ -375,8 +375,74 @@ class MdxaAnimation:
         self.bonePool = MdxaBonePool()
 
     def loadFromFile(
-        self, file: BinaryIO, header: MdxaHeader, startFrame: int, numFrames: int
+        self, file: BinaryIO, header: MdxaHeader, startFrame: int, numFrames: int, data_frames_file: dict
     ) -> Tuple[bool, ErrorMessage]:
+        # **NEW: Filter animations based on data_frames_file clips AND range parameters**
+        animation_clips = []
+        if data_frames_file:
+            for xsi_path, frame_data in data_frames_file.items():
+                if isinstance(frame_data, dict) and "startframe" in frame_data and "duration" in frame_data:
+                    try:
+                        clip_start_frame = int(frame_data["startframe"])
+                        duration = int(frame_data["duration"])
+                        fps = int(frame_data.get("fps", 20))  # Default 20 FPS
+                        
+                        # Calculate end frame
+                        clip_end_frame = clip_start_frame + duration - 1
+                        
+                        # **NEW: Check if clip is within the specified range**
+                        # If range is specified (numFrames != -1), only include clips that overlap with the range
+                        if numFrames != -1:
+                            range_start = startFrame
+                            range_end = startFrame + numFrames - 1
+                            
+                            # Check if clip overlaps with the specified range
+                            # Clip overlaps if: clip_start <= range_end AND clip_end >= range_start
+                            if clip_start_frame > range_end or clip_end_frame < range_start:
+                                print(f"Skipping clip {os.path.basename(xsi_path)} (frames {clip_start_frame}-{clip_end_frame}) - outside range {range_start}-{range_end}")
+                                continue
+                        
+                        # Create clip info
+                        clip_name = os.path.splitext(os.path.basename(xsi_path))[0]
+                        animation_clips.append({
+                            "name": clip_name,
+                            "start_frame": clip_start_frame,
+                            "end_frame": clip_end_frame,
+                            "duration": duration,
+                            "fps": fps,
+                            "xsi_path": xsi_path
+                        })
+                        print(f"Found animation clip: {clip_name} (frames {clip_start_frame}-{clip_end_frame})")
+                    except (ValueError, KeyError) as e:
+                        print(f"Warning: Could not parse frame data for {xsi_path}: {e}")
+                        continue
+
+        # If no clips defined, use original behavior
+        if not animation_clips:
+            print("No animation clips defined, loading all frames")
+            return self._loadAllFrames(file, header, startFrame, numFrames)
+        
+        # **NEW: Load only the frames needed for the clips**
+        print(f"Loading {len(animation_clips)} animation clips...")
+        
+        # Calculate frame range needed
+        min_frame = min(clip["start_frame"] for clip in animation_clips)
+        max_frame = max(clip["end_frame"] for clip in animation_clips)
+        
+        # Ensure we don't exceed available frames
+        min_frame = max(0, min_frame)
+        max_frame = min(header.numFrames - 1, max_frame)
+        
+        print(f"Loading frames {min_frame} to {max_frame} (total: {max_frame - min_frame + 1} frames)")
+        
+        # Store clip info for later use
+        self.animation_clips = animation_clips
+        
+        # Load the filtered frame range
+        return self._loadFrameRange(file, header, min_frame, max_frame - min_frame + 1)
+    
+    def _loadAllFrames(self, file: BinaryIO, header: MdxaHeader, startFrame: int, numFrames: int) -> Tuple[bool, ErrorMessage]:
+        """Load all frames (original behavior)"""
         # read frames
         if file.tell() != header.ofsFrames:
             print(
@@ -441,6 +507,69 @@ class MdxaAnimation:
                 "Info: .gla Bone Pool read but file not over yet - this likely indicates a problem."
             )
         return True, NoError
+    
+    def _loadFrameRange(self, file: BinaryIO, header: MdxaHeader, startFrame: int, numFrames: int) -> Tuple[bool, ErrorMessage]:
+        """Load a specific range of frames"""
+        # read frames
+        if file.tell() != header.ofsFrames:
+            print(
+                "Info: Frames in .gla not encountered when expected (at ",
+                file.tell(),
+                " instead of ",
+                header.ofsFrames,
+                "), seeking correct position. There could be a bug in the importer (bad) or the file could be unusual - but not necessarily wrong (no problem).",
+                sep="",
+            )
+            file.seek(header.ofsFrames)
+
+        # prepare frame start/end settings
+        print("Reading {} frames, starting at {}".format(numFrames, startFrame))
+        if startFrame >= header.numFrames:
+            print("Warning: StartFrame beyond existing frames, using last one")
+            startFrame = header.numFrames - 1
+            numFrames = 1
+        if startFrame + numFrames > header.numFrames:
+            print("Warning: Trying to import more frames than there are, fixing")
+            numFrames = header.numFrames - startFrame
+        # skip first startFrame frames
+        # 1 = from current position
+        file.seek(startFrame * 3 * header.numBones, 1)
+
+        # read (remaining) frames
+        maxIndex = -1
+        for i in range(numFrames):
+            frame = MdxaFrame()
+            # loadFromFile returns highest read index
+            maxIndex = max(maxIndex, frame.loadFromFile(file, header.numBones))
+            self.frames.append(frame)
+
+        # read compressed bone pool
+        # see if we reached it yet
+        curPos = file.tell()
+        if curPos != header.ofsCompBonePool:
+            # we're not yet there. If we're off by 0-3 bytes, it's because 32-bit-alignment is forced. Silently seek correct position. Otherwise: warn (and seek correct position, too)
+            # if we're only importing some frames, we may or may not be there yet, of course, so don't warn.
+            if curPos > header.ofsCompBonePool or (
+                header.ofsCompBonePool > curPos + 3 and numFrames == header.numFrames
+            ):
+                print(
+                    "Info: Bone Pool in .gla not encountered when expected (at ",
+                    file.tell(),
+                    " instead of ",
+                    header.ofsCompBonePool,
+                    "), seeking correct position. There could be a bug in the importer (bad) or the file could be unusual - but not necessarily wrong (no problem).",
+                    sep="",
+                )
+            file.seek(header.ofsCompBonePool)
+        # there's one more object than the highest index since those start at 0
+        self.bonePool.loadFromFile(file, maxIndex + 1)
+
+        # file should be over now, bone pool is usually the last thing. I'm not sure it has to be, but so far it has always been.
+        if file.tell() != header.ofsEnd and numFrames == header.numFrames:
+            print(
+                "Info: .gla Bone Pool read but file not over yet - this likely indicates a problem."
+            )
+        return True, NoError
 
     def saveToFile(self, file: BinaryIO, header: MdxaHeader):
         assert file.tell() == header.ofsFrames
@@ -453,9 +582,18 @@ class MdxaAnimation:
         assert file.tell() == header.ofsCompBonePool
         self.bonePool.saveToFile(file)
 
-    def saveToBlender(self, skeleton: MdxaSkel, armature: bpy.types.Object, scale):
+    def saveToBlender(
+        self,
+        skeleton: MdxaSkel,
+        armature: bpy.types.Object,
+        scale,
+        data_frames_file: dict,
+    ):
         import time
+
         startTime = time.time()
+        print("Starting SAFE animation import with filtering...")
+        
         #   Bone Position Set Order
         # bones have to be set in hierarchical order - their position depends on their parent's absolute position, after all.
         # so this is the order in which bones have to be processed.
@@ -499,13 +637,21 @@ class MdxaAnimation:
             [[scale, 0, 0, 0], [0, scale, 0, 0], [0, 0, scale, 0], [0, 0, 0, 1]]
         )
 
+        # **NEW: Show filtered animation info**
+        if hasattr(self, 'animation_clips') and self.animation_clips:
+            print(f"Using {len(self.animation_clips)} filtered animation clips:")
+            for clip in self.animation_clips:
+                print(f"  - {clip['name']}: frames {clip['start_frame']}-{clip['end_frame']} ({clip['duration']} frames)")
+        else:
+            print(f"No clips defined, using all {numFrames} frames")
+
         # show progress every 1000 steps, but at least 10 times)
         progressStep = min(1000, round(numFrames / 10))
         nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
         lastFrameNum = 0
-        print("TODO LANGSAM SHIET")
+        print("Processing animation frames...")
 
-        #   Export animation
+        #   Export animation (ORIGINAL WORKING CODE)
         for frameNum, frame in enumerate(self.frames):
             # show progress bar / remaining time
             if time.time() >= nextProgressDisplayTime:
@@ -565,6 +711,10 @@ class MdxaAnimation:
                 bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
 
         scene.frame_current = 1
+        
+        endTime = time.time()
+        print(f"SAFE Animation import completed in {endTime - startTime:.2f} seconds")
+        print(f"Processed {numFrames} frames with {len(bones)} bones")
 
 
 class AnimationLoadMode(Enum):
@@ -593,6 +743,7 @@ class GLA:
         loadAnimation: AnimationLoadMode,
         startFrame: int,
         numFrames: int,
+        data_frames_file: dict,
     ) -> Tuple[bool, ErrorMessage]:
         if log_level == "DEBUG":
             print("Loading {}...".format(filepath_abs))
@@ -620,11 +771,11 @@ class GLA:
         if loadAnimation != AnimationLoadMode.NONE:
             profiler.start("reading animations")
             if loadAnimation == AnimationLoadMode.ALL:
-                success, message = self.animation.loadFromFile(file, self.header, 0, -1)
+                success, message = self.animation.loadFromFile(file, self.header, 0, -1, data_frames_file)
             else:
                 assert loadAnimation == AnimationLoadMode.RANGE
                 success, message = self.animation.loadFromFile(
-                    file, self.header, startFrame, numFrames
+                    file, self.header, startFrame, numFrames, data_frames_file
                 )
             if not success:
                 return False, message
@@ -896,6 +1047,7 @@ class GLA:
         scene_root: bpy.types.Object,
         useAnimation: bool,
         skeletonFixes: SoF2G2Constants.SkeletonFixes,
+        data_frames_file: dict,
     ) -> Tuple[bool, ErrorMessage]:
         print("Applying skeleton/skeleton to Blender")
         profiler = MrwProfiler.SimpleProfiler(True)
@@ -997,7 +1149,10 @@ class GLA:
                 print("=== Profile stop ===")
             else:
                 self.animation.saveToBlender(
-                    self.skeleton, self.skeleton_object, self.header.scale
+                    self.skeleton,
+                    self.skeleton_object,
+                    self.header.scale,
+                    data_frames_file,
                 )
             profiler.stop("applying animations")
         return True, NoError
