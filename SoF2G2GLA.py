@@ -411,7 +411,7 @@ class MdxaAnimation:
                             "fps": fps,
                             "xsi_path": xsi_path
                         })
-                        print(f"Found animation clip: {clip_name} (frames {clip_start_frame}-{clip_end_frame})")
+                        #print(f"Found animation clip: {clip_name} (frames {clip_start_frame}-{clip_end_frame})")
                     except (ValueError, KeyError) as e:
                         print(f"Warning: Could not parse frame data for {xsi_path}: {e}")
                         continue
@@ -641,15 +641,15 @@ class MdxaAnimation:
             scale = 1
         else:
             scale = 1 / scale
-        scaleMatrix = mathutils.Matrix(
-            [[scale, 0, 0, 0], [0, scale, 0, 0], [0, 0, scale, 0], [0, 0, 0, 1]]
-        )
+        # scaleMatrix = mathutils.Matrix(
+        #     [[scale, 0, 0, 0], [0, scale, 0, 0], [0, 0, scale, 0], [0, 0, 0, 1]]
+        # )
 
         # **NEW: Show filtered animation info**
         if hasattr(self, 'animation_clips') and self.animation_clips:
             print(f"Using {len(self.animation_clips)} filtered animation clips:")
-            for clip in self.animation_clips:
-                print(f"  - {clip['name']}: frames {clip['start_frame']}-{clip['end_frame']} ({clip['duration']} frames)")
+            #for clip in self.animation_clips:
+            #    print(f"  - {clip['name']}: frames {clip['start_frame']}-{clip['end_frame']} ({clip['duration']} frames)")
         else:
             print(f"No clips defined, using all {numFrames} frames")
 
@@ -662,13 +662,42 @@ class MdxaAnimation:
                 armature.animation_data_create()
             
             # Process each clip separately
-            for clip in self.animation_clips:
+            for index, clip in enumerate(self.animation_clips):
                 clip_name = clip["name"]
                 start_frame = clip["start_frame"]
-                end_frame = clip["end_frame"]
                 duration = clip["duration"]
                 
-                print(f"Processing clip: {clip_name} (frames {start_frame}-{end_frame})")
+                clip_timing_stats = {
+                    'mode_switches': 0.0,
+                    'keyframe_inserts': 0.0,
+                    'matrix_calculations': 0.0,
+                    'bone_transformations': 0.0
+                }
+                
+                # **PROFILING: Show clip progress every 3 clips (fallback style)**
+                if index % 3 == 0 and index > 0:
+                    total_elapsed = time.time() - startTime
+                    clips_processed = index
+                    clips_remaining = len(self.animation_clips) - clips_processed
+                    
+                    # Calculate overall performance metrics
+                    total_mode_switches = timing_stats['mode_switches']
+                    avg_clip_time = total_elapsed / clips_processed if clips_processed > 0 else 0
+                    estimated_remaining = avg_clip_time * clips_remaining
+                    
+                    print(
+                        "Clip {}/{} - {:.2%} - remaining time: ca. {:.0f}m {:.0f}s - "
+                        "Mode switches: {:.1f}s ({:.1f}%) - Avg switch: {:.1f}ms".format(
+                            clips_processed,
+                            len(self.animation_clips),
+                            clips_processed / len(self.animation_clips),
+                            estimated_remaining // 60,
+                            estimated_remaining % 60,
+                            total_mode_switches,
+                            total_mode_switches / total_elapsed * 100,
+                            (total_mode_switches / (clips_processed * len(hierarchyOrder) * 2)) * 1000 if clips_processed > 0 else 0
+                        )
+                    )
                 
                 # Create action for this clip
                 action = bpy.data.actions.new(name=clip_name)
@@ -704,7 +733,9 @@ class MdxaAnimation:
                     for index in hierarchyOrder:
                         mode_start = time.time()
                         bpy.ops.object.mode_set(mode="POSE", toggle=False)
-                        timing_stats['mode_switches'] += time.time() - mode_start
+                        mode_switch_time = time.time() - mode_start
+                        timing_stats['mode_switches'] += mode_switch_time
+                        clip_timing_stats['mode_switches'] += mode_switch_time
                         
                         mdxaBone = skeleton.bones[index]
                         assert mdxaBone.index == index
@@ -725,40 +756,53 @@ class MdxaAnimation:
                         transformation = matrix_overload_cast(offset @ basePoses[index])
                         # flip axes as required for blender bone
                         SoF2G2Math.GLABoneRotToBlender(transformation)
-                        timing_stats['matrix_calculations'] += time.time() - matrix_start
+                        matrix_time = time.time() - matrix_start
+                        timing_stats['matrix_calculations'] += matrix_time
+                        clip_timing_stats['matrix_calculations'] += matrix_time
 
                         # **PROFILING: Time bone transformations**
                         bone_start = time.time()
                         pose_bone = bones[index]
                         pose_bone.matrix = transformation
                         pose_bone.scale = [1, 1, 1]
-                        timing_stats['bone_transformations'] += time.time() - bone_start
+                        bone_time = time.time() - bone_start
+                        timing_stats['bone_transformations'] += bone_time
+                        clip_timing_stats['bone_transformations'] += bone_time
                         
                         # **PROFILING: Time keyframe inserts**
                         keyframe_start = time.time()
                         pose_bone.keyframe_insert("location")
                         pose_bone.keyframe_insert("rotation_quaternion")
-                        timing_stats['keyframe_inserts'] += time.time() - keyframe_start
+                        keyframe_time = time.time() - keyframe_start
+                        timing_stats['keyframe_inserts'] += keyframe_time
+                        clip_timing_stats['keyframe_inserts'] += keyframe_time
                         
                         # **PROFILING: Time mode switches**
                         mode_start = time.time()
                         bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
-                        timing_stats['mode_switches'] += time.time() - mode_start
+                        mode_switch_time = time.time() - mode_start
+                        timing_stats['mode_switches'] += mode_switch_time
+                        clip_timing_stats['mode_switches'] += mode_switch_time
                 
-                
-                
-                print(f"Created action: {clip_name} with {duration} frames")
-            
             # **Restore original FPS and set scene back to first frame**
             scene.render.fps = 24  # Restore default FPS #TODO default FPS Anatoli wechselbar machen??
             scene.frame_current = 0
             
         else:
             # **FALLBACK: Original behavior for all frames**
-            print("Processing all frames as single animation...")
+            print("Processing all frames as single animation. MAY TAKE VERY LONG TIME!!...")
+            
+            # **PROFILING: Initialize timing stats for fallback**
+            fallback_timing_stats = {
+                'mode_switches': 0.0,
+                'keyframe_inserts': 0.0,
+                'matrix_calculations': 0.0,
+                'bone_transformations': 0.0,
+                'frame_setting': 0.0,
+                'progress_display': 0.0
+            }
             
             # show progress every 1000 steps, but at least 10 times)
-            progressStep = min(1000, round(numFrames / 10))
             nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
             lastFrameNum = 0
 
@@ -766,6 +810,7 @@ class MdxaAnimation:
             for frameNum, frame in enumerate(self.frames):
                 # show progress bar / remaining time
                 if time.time() >= nextProgressDisplayTime:
+                    progress_start = time.time()
                     numProcessedFrames = frameNum - lastFrameNum
                     framesRemaining = numFrames - frameNum
                     # only take the frames since the last update into account since the speed varies.
@@ -774,29 +819,49 @@ class MdxaAnimation:
                         PROGRESS_UPDATE_INTERVAL * framesRemaining / numProcessedFrames
                     )
 
+                    # Calculate current performance metrics for fallback
+                    total_mode_switches = fallback_timing_stats['mode_switches']
+                    avg_switch_time = total_mode_switches / (frameNum * len(hierarchyOrder) * 2) if frameNum > 0 else 0
+                    current_elapsed_time = time.time() - startTime
+                    mode_switch_percentage = total_mode_switches / current_elapsed_time * 100 if current_elapsed_time > 0 else 0
+                    
                     print(
-                        "Frame {}/{} - {:.2%} - remaining time: ca. {:.0f}m {:.0f}s".format(
+                        "Frame {}/{} - {:.2%} - remaining time: ca. {:.0f}m {:.0f}s - "
+                        "Mode switches: {:.1f}s ({:.1f}%) - Avg switch: {:.1f}ms".format(
                             frameNum,
                             numFrames,
                             frameNum / numFrames,
                             timeRemaining // 60,
                             timeRemaining % 60,
+                            total_mode_switches,
+                            mode_switch_percentage,
+                            avg_switch_time * 1000
                         )
                     )
 
                     lastFrameNum = frameNum
                     nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
+                    fallback_timing_stats['progress_display'] += time.time() - progress_start
 
                 # set current frame
+                frame_set_start = time.time()
                 scene.frame_set(frameNum)
+                fallback_timing_stats['frame_setting'] += time.time() - frame_set_start
 
                 # absolute offset matrices by bone index
                 offsets: Dict[int, mathutils.Matrix] = {}
                 for index in hierarchyOrder:
+                    # **PROFILING: Time mode switches**
+                    mode_start = time.time()
                     bpy.ops.object.mode_set(mode="POSE", toggle=False)
+                    fallback_timing_stats['mode_switches'] += time.time() - mode_start
+                    
                     mdxaBone = skeleton.bones[index]
                     assert mdxaBone.index == index
                     bonePoolIndex = frame.boneIndices[index]
+                    
+                    # **PROFILING: Time matrix calculations**
+                    matrix_start = time.time()
                     # get offset transformation matrix, relative to parent
                     offset = downcast(List[SoF2G2Math.CompBone], self.bonePool.bones)[
                         bonePoolIndex
@@ -810,16 +875,28 @@ class MdxaAnimation:
                     transformation = matrix_overload_cast(offset @ basePoses[index])
                     # flip axes as required for blender bone
                     SoF2G2Math.GLABoneRotToBlender(transformation)
+                    fallback_timing_stats['matrix_calculations'] += time.time() - matrix_start
 
+                    # **PROFILING: Time bone transformations**
+                    bone_start = time.time()
                     pose_bone = bones[index]
                     # pose_bone.matrix = transformation * scaleMatrix
                     pose_bone.matrix = transformation
                     # in the _humanoid face, the scale gets changed. that messes the re-export up. FIXME: understand why. Is there a problem?
                     pose_bone.scale = [1, 1, 1]
+                    fallback_timing_stats['bone_transformations'] += time.time() - bone_start
+                    
+                    # **PROFILING: Time keyframe inserts**
+                    keyframe_start = time.time()
                     pose_bone.keyframe_insert("location")
                     pose_bone.keyframe_insert("rotation_quaternion")
+                    fallback_timing_stats['keyframe_inserts'] += time.time() - keyframe_start
+                    
+                    # **PROFILING: Time mode switches**
+                    mode_start = time.time()
                     # hackish way to force the matrix to update. FIXME: this seems to slow the process down a lot
                     bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
+                    fallback_timing_stats['mode_switches'] += time.time() - mode_start
 
             scene.frame_current = 1
 
@@ -830,11 +907,40 @@ class MdxaAnimation:
         # **PROFILING: Print detailed timing breakdown**
         total_time = endTime - startTime
         print("\n=== PERFORMANCE BREAKDOWN ===")
-        print(f"Mode Switches: {timing_stats['mode_switches']:.2f}s ({timing_stats['mode_switches']/total_time*100:.1f}%)")
-        print(f"Keyframe Inserts: {timing_stats['keyframe_inserts']:.2f}s ({timing_stats['keyframe_inserts']/total_time*100:.1f}%)")
-        print(f"Matrix Calculations: {timing_stats['matrix_calculations']:.2f}s ({timing_stats['matrix_calculations']/total_time*100:.1f}%)")
-        print(f"Bone Transformations: {timing_stats['bone_transformations']:.2f}s ({timing_stats['bone_transformations']/total_time*100:.1f}%)")
-        print(f"Other Operations: {total_time - sum(timing_stats.values()):.2f}s ({(total_time - sum(timing_stats.values()))/total_time*100:.1f}%)")
+        
+        # Use appropriate timing stats based on which path was taken
+        if self.animation_clips:
+            # Clip-based processing
+            print(f"Mode Switches: {timing_stats['mode_switches']:.2f}s ({timing_stats['mode_switches']/total_time*100:.1f}%)")
+            print(f"Keyframe Inserts: {timing_stats['keyframe_inserts']:.2f}s ({timing_stats['keyframe_inserts']/total_time*100:.1f}%)")
+            print(f"Matrix Calculations: {timing_stats['matrix_calculations']:.2f}s ({timing_stats['matrix_calculations']/total_time*100:.1f}%)")
+            print(f"Bone Transformations: {timing_stats['bone_transformations']:.2f}s ({timing_stats['bone_transformations']/total_time*100:.1f}%)")
+            print(f"Other Operations: {total_time - sum(timing_stats.values()):.2f}s ({(total_time - sum(timing_stats.values()))/total_time*100:.1f}%)")
+        else:
+            # Fallback processing
+            print(f"Mode Switches: {fallback_timing_stats['mode_switches']:.2f}s ({fallback_timing_stats['mode_switches']/total_time*100:.1f}%)")
+            print(f"Keyframe Inserts: {fallback_timing_stats['keyframe_inserts']:.2f}s ({fallback_timing_stats['keyframe_inserts']/total_time*100:.1f}%)")
+            print(f"Matrix Calculations: {fallback_timing_stats['matrix_calculations']:.2f}s ({fallback_timing_stats['matrix_calculations']/total_time*100:.1f}%)")
+            print(f"Bone Transformations: {fallback_timing_stats['bone_transformations']:.2f}s ({fallback_timing_stats['bone_transformations']/total_time*100:.1f}%)")
+            print(f"Frame Setting: {fallback_timing_stats['frame_setting']:.2f}s ({fallback_timing_stats['frame_setting']/total_time*100:.1f}%)")
+            print(f"Progress Display: {fallback_timing_stats['progress_display']:.2f}s ({fallback_timing_stats['progress_display']/total_time*100:.1f}%)")
+            print(f"Other Operations: {total_time - sum(fallback_timing_stats.values()):.2f}s ({(total_time - sum(fallback_timing_stats.values()))/total_time*100:.1f}%)")
+            
+            # **DETAILED MODE SWITCH ANALYSIS**
+            total_mode_switches = fallback_timing_stats['mode_switches']
+            total_bones = len(bones)
+            total_frames = numFrames
+            switches_per_bone_per_frame = 2  # POSE -> OBJECT for each bone
+            total_expected_switches = total_frames * total_bones * switches_per_bone_per_frame
+            avg_switch_time = total_mode_switches / total_expected_switches if total_expected_switches > 0 else 0
+            
+            print("\n=== MODE SWITCH ANALYSIS ===")
+            print(f"Total Mode Switches: {total_expected_switches:,}")
+            print(f"Average Time per Switch: {avg_switch_time*1000:.2f}ms")
+            print(f"Mode Switch Overhead: {total_mode_switches/total_time*100:.1f}% of total time")
+            print(f"Estimated Time Saved (no switches): {total_time - total_mode_switches:.2f}s")
+            print("=============================")
+        
         print("=============================")
 
 
