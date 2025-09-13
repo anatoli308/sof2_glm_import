@@ -27,6 +27,8 @@ from . import SoF2G2DataCache as DataCache  # noqa: E402
 from . import SoF2G2Scene  # noqa: E402
 from . import SoF2G2GLA  # noqa: E402, F811
 from . import SoF2Filesystem  # noqa: E402
+from . import skl_parser  # noqa: E402
+from . import frames_parser  # noqa: E402
 
 
 def find_skin_data_by_file_value(skin_data: dict, file_name: str):
@@ -177,7 +179,9 @@ class GLMImport(bpy.types.Operator):
                 if search and search not in name.lower() and search not in desc.lower():
                     continue
                 if shown >= max_show:
-                    layout.label(text=f"... {len(items)-shown} weitere NPCs ausgeblendet ...")
+                    layout.label(
+                        text=f"... {len(items) - shown} weitere NPCs ausgeblendet ..."
+                    )
                     break
 
                 row = layout.row(align=True)
@@ -197,9 +201,9 @@ class GLMImport(bpy.types.Operator):
                     emboss=True,
                 )
                 op.npc_id = ident
-                short_desc = ("(SP) " if no_deathmatch else "(MP)") + (" (No Model)"
-                    if no_model
-                    else "")
+                short_desc = ("(SP) " if no_deathmatch else "(MP)") + (
+                    " (No Model)" if no_model else ""
+                )
                 row.label(text=short_desc)
                 shown += 1
 
@@ -227,7 +231,9 @@ class GLMImport(bpy.types.Operator):
         else:
             row = layout.row()
             row.alert = True
-            row.label(text="Base folder not found!", icon="ERROR")
+            row.label(text="Base folder not detected!", icon="ERROR")
+            row = layout.row()
+            row.label(text="Please select your base folder!")
 
     def execute(self, context):
         if not self.basepath:
@@ -251,24 +257,58 @@ class GLMImport(bpy.types.Operator):
                 "Model", None
             )
 
-            skin_files = character_template.get("char_template", {}).get("Skin", {})
-            if isinstance(skin_files, dict):
-                print("skin_files ist ein dict")
-                skin_file_data = skin_files
-            elif isinstance(skin_files, list):
-                print("skin_files ist eine Liste")
-                # TODO make user pick one for now we just choose first
-                skin_file_data = skin_files[0] if skin_files else None
+            character_skeleton_name = character_template.get("group_info", {}).get(
+                "Skeleton", None
+            )
+            text = open(
+                os.path.normpath(
+                    self.basepath + "/skeletons/" + character_skeleton_name
+                ),
+                "r",
+                encoding="utf-8",
+            ).read()
+            data_skl_file = skl_parser.parse_skl(text)
+
+            character_skeleton_name = character_template.get("group_info", {}).get(
+                "Skeleton", None
+            )
+            text = open(
+                os.path.normpath(
+                    self.basepath
+                    + "/skeletons/"
+                    + os.path.splitext(character_skeleton_name)[0]
+                    + ".frames"
+                ),
+                "r",
+                encoding="utf-8",
+            ).read()
+            data_frames_file = frames_parser.parse_frames(text)
+
+            character_template_skin_files = character_template.get(
+                "char_template", {}
+            ).get("Skin", {})
+            if isinstance(character_template_skin_files, dict):
+                character_template_skin_information = character_template_skin_files
+            elif isinstance(character_template_skin_files, list):
+                # TODO Anatoli - make user pick one for now we just choose first
+                character_template_skin_information = (
+                    character_template_skin_files[0]
+                    if character_template_skin_files
+                    else None
+                )
             else:
-                print("skin_files ist etwas anderes:", type(skin_files))
+                print(
+                    "skin_files type ist unbekannt:",
+                    type(character_template_skin_files),
+                )
                 return {"CANCELLED"}
 
-            _, skin_data = DataCache.get_skins(
+            _, all_g2skin_files_data = DataCache.get_skins(
                 getattr(self, "basepath", ""), character_model_path
             )
 
-            selected_skin_data = find_skin_data_by_file_value(
-                skin_data, skin_file_data.get("File")
+            selected_g2skin_data = find_skin_data_by_file_value(
+                all_g2skin_files_data, character_template_skin_information.get("File")
             )
 
             parent_template = character_template.get("group_info", {}).get(
@@ -278,7 +318,7 @@ class GLMImport(bpy.types.Operator):
                 print(f"NPC got a Parent NPC template: {parent_template}")
 
             # TODO add a checkbox to proceed without g2skins, BUT everything probably will be pink!
-            if not selected_skin_data:
+            if not selected_g2skin_data:
                 self.report(
                     {"ERROR"},
                     "No g2skin file found! Check your loaded .npc file definition if you load one.",
@@ -291,7 +331,7 @@ class GLMImport(bpy.types.Operator):
             # load GLM
             scene = SoF2G2Scene.Scene(self.basepath)
             success, message = scene.loadFromGLM(
-                character_model_path, selected_skin_data
+                character_model_path, selected_g2skin_data
             )
             if not success:
                 self.report({"ERROR"}, message)
@@ -312,7 +352,7 @@ class GLMImport(bpy.types.Operator):
             guessTextures = True  # Anatoli - True for now dont need that in SoF2 idk what it does right now
             success, message = scene.saveToBlender(
                 scale,
-                selected_skin_data,
+                selected_g2skin_data,
                 guessTextures,
                 loadAnimations != SoF2G2GLA.AnimationLoadMode.NONE,
                 SkeletonFixes[self.skeletonFixes],

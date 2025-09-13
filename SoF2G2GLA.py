@@ -455,7 +455,6 @@ class MdxaAnimation:
 
     def saveToBlender(self, skeleton: MdxaSkel, armature: bpy.types.Object, scale):
         import time
-
         startTime = time.time()
         #   Bone Position Set Order
         # bones have to be set in hierarchical order - their position depends on their parent's absolute position, after all.
@@ -504,6 +503,7 @@ class MdxaAnimation:
         progressStep = min(1000, round(numFrames / 10))
         nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
         lastFrameNum = 0
+        print("TODO LANGSAM SHIET")
 
         #   Export animation
         for frameNum, frame in enumerate(self.frames):

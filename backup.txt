@@ -1,3 +1,5 @@
+
+GetMaterial!!
 f, name, bsShader, shader_def: str = ""):
         """
         Lädt ein Material basierend auf dem G2/G3 Shader.
@@ -188,3 +190,191 @@ f, name, bsShader, shader_def: str = ""):
         return mat
 
 
+
+
+______________________
+
+
+def saveToBlender(self, skeleton: MdxaSkel, armature: bpy.types.Object, scale):
+        import time
+
+        startTime = time.time()
+        print("Starting optimized animation import...")
+        
+        #   Bone Position Set Order (unchanged)
+        hierarchyOrder: List[int] = []
+        while len(hierarchyOrder) < len(skeleton.bones):
+            addedSomething = False
+            for bone in skeleton.bones:
+                if bone.index in hierarchyOrder:
+                    continue
+                if bone.parent != -1 and bone.parent not in hierarchyOrder:
+                    continue
+                hierarchyOrder.append(bone.index)
+                addedSomething = True
+            assert addedSomething
+
+        #   Blender PoseBones list (unchanged)
+        bones: List[bpy.types.PoseBone] = []
+        for info in skeleton.bones:
+            bones.append(armature.pose.bones[info.name])
+
+        basePoses: List[mathutils.Matrix] = []
+        for bone in skeleton.bones:
+            basePoses.append(bone.basePoseMat.toBlender())
+
+        #   Prepare animation
+        scene = bpy.context.scene
+        scene.frame_start = 0
+        numFrames = len(self.frames)
+        scene.frame_end = numFrames - 1
+
+        if scale == 0:
+            scale = 1
+        else:
+            scale = 1 / scale
+
+        # **OPTIMIZATION 1: Set mode once at the beginning**
+        bpy.context.view_layer.objects.active = armature
+        bpy.ops.object.mode_set(mode="POSE")
+        print("Set to POSE mode - no more mode switching!")
+
+        # **OPTIMIZATION 2: Create animation data directly**
+        if not armature.animation_data:
+            armature.animation_data_create()
+        
+        action = bpy.data.actions.new(name=f"{armature.name}_animation")
+        armature.animation_data.action = action
+        
+        # **OPTIMIZATION 3: Pre-create all fcurves**
+        print("Creating fcurves...")
+        fcurves = {}
+        for bone in bones:
+            for prop in ["location", "rotation_quaternion"]:
+                for i in range(3 if prop == "location" else 4):
+                    fcurves[f"{bone.name}_{prop}_{i}"] = action.fcurves.new(
+                        data_path=f'pose.bones["{bone.name}"].{prop}',
+                        index=i
+                    )
+
+        # **OPTIMIZATION 4: Collect all keyframe data first**
+        print("Processing transformations...")
+        keyframe_data = {}
+        for bone in bones:
+            keyframe_data[bone.name] = {
+                "location": [[] for _ in range(3)],
+                "rotation_quaternion": [[] for _ in range(4)]
+            }
+
+        # Progress tracking
+        nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
+        lastFrameNum = 0
+
+        # **OPTIMIZATION 5: Process all frames without mode switching or keyframe insertion**
+        for frameNum, frame in enumerate(self.frames):
+            # Progress display
+            if time.time() >= nextProgressDisplayTime:
+                numProcessedFrames = frameNum - lastFrameNum
+                framesRemaining = numFrames - frameNum
+                timeRemaining = (PROGRESS_UPDATE_INTERVAL * framesRemaining / numProcessedFrames)
+                
+                print(f"Frame {frameNum}/{numFrames} - {frameNum/numFrames:.2%} - remaining time: ca. {timeRemaining//60:.0f}m {timeRemaining%60:.0f}s")
+                
+                lastFrameNum = frameNum
+                nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
+
+            # **NO FRAME SETTING HERE - we'll do it in batches later**
+            
+            # Process bone transformations
+            offsets: Dict[int, mathutils.Matrix] = {}
+            for index in hierarchyOrder:
+                # **NO MODE SWITCHING!**
+                mdxaBone = skeleton.bones[index]
+                assert mdxaBone.index == index
+                bonePoolIndex = frame.boneIndices[index]
+                
+                # Get offset transformation matrix
+                offset = downcast(List[SoF2G2Math.CompBone], self.bonePool.bones)[
+                    bonePoolIndex
+                ].matrix
+                
+                # Turn into absolute offset matrix
+                if mdxaBone.parent != -1:
+                    offset = matrix_overload_cast(offsets[mdxaBone.parent] @ offset)
+                offsets[index] = offset
+                
+                # Calculate the actual position
+                transformation = matrix_overload_cast(offset @ basePoses[index])
+                SoF2G2Math.GLABoneRotToBlender(transformation)
+
+                # **OPTIMIZATION 6: Store transformation data instead of applying immediately**
+                pose_bone = bones[index]
+                
+                # Extract location and rotation from transformation matrix
+                location = transformation.translation
+                rotation = transformation.to_quaternion()
+                
+                # Store keyframe data
+                bone_name = pose_bone.name
+                keyframe_data[bone_name]["location"][0].append((frameNum, location.x))
+                keyframe_data[bone_name]["location"][1].append((frameNum, location.y))
+                keyframe_data[bone_name]["location"][2].append((frameNum, location.z))
+                
+                keyframe_data[bone_name]["rotation_quaternion"][0].append((frameNum, rotation.x))
+                keyframe_data[bone_name]["rotation_quaternion"][1].append((frameNum, rotation.y))
+                keyframe_data[bone_name]["rotation_quaternion"][2].append((frameNum, rotation.z))
+                keyframe_data[bone_name]["rotation_quaternion"][3].append((frameNum, rotation.w))
+
+        # **OPTIMIZATION 7: Batch insert all keyframes at once using keyframe_points.add()**
+        print("Inserting keyframes...")
+        total_keyframes = 0
+        bone_count = 0
+        total_bones = len(keyframe_data)
+        
+        for bone_name, bone_data in keyframe_data.items():
+            bone_count += 1
+            if bone_count % 10 == 0 or bone_count == total_bones:
+                print(f"Processing bone {bone_count}/{total_bones}: {bone_name}")
+            
+            # Insert location keyframes
+            for i in range(3):
+                fcurve = fcurves[f"{bone_name}_location_{i}"]
+                keyframe_data_list = bone_data["location"][i]
+                if keyframe_data_list:  # Only if we have data
+                    # Sort by frame number to ensure correct order
+                    keyframe_data_list.sort(key=lambda x: x[0])
+                    # Pre-allocate keyframe points
+                    fcurve.keyframe_points.add(len(keyframe_data_list))
+                    # Set all keyframes at once
+                    for j, (frame_num, value) in enumerate(keyframe_data_list):
+                        fcurve.keyframe_points[j].co = (frame_num, value)
+                        fcurve.keyframe_points[j].interpolation = 'LINEAR'
+                    total_keyframes += len(keyframe_data_list)
+            
+            # Insert rotation keyframes
+            for i in range(4):
+                fcurve = fcurves[f"{bone_name}_rotation_quaternion_{i}"]
+                keyframe_data_list = bone_data["rotation_quaternion"][i]
+                if keyframe_data_list:  # Only if we have data
+                    # Sort by frame number to ensure correct order
+                    keyframe_data_list.sort(key=lambda x: x[0])
+                    # Pre-allocate keyframe points
+                    fcurve.keyframe_points.add(len(keyframe_data_list))
+                    # Set all keyframes at once
+                    for j, (frame_num, value) in enumerate(keyframe_data_list):
+                        fcurve.keyframe_points[j].co = (frame_num, value)
+                        fcurve.keyframe_points[j].interpolation = 'LINEAR'
+                    total_keyframes += len(keyframe_data_list)
+
+        # **OPTIMIZATION 8: Update fcurves and set mode back**
+        print("Updating fcurves...")
+        for fcurve in action.fcurves:
+            fcurve.update()
+        
+        bpy.ops.object.mode_set(mode="OBJECT")
+        scene.frame_current = 1
+        
+        endTime = time.time()
+        print(f"Animation import completed in {endTime - startTime:.2f} seconds")
+        print(f"Inserted {total_keyframes} keyframes")
+        print(f"Processed {numFrames} frames with {len(bones)} bones")
