@@ -66,11 +66,6 @@ def find_character_template_by_key(npcs_data, key):
     return None
 
 
-def get_npcs_items(self, context):
-    """Wrapper function for EnumProperty that returns just the items list"""
-    return DataCache.get_npc_enum_items(self.basepath)
-
-
 class GLMImport(bpy.types.Operator):
     """Import GLM Operator."""
 
@@ -78,9 +73,9 @@ class GLMImport(bpy.types.Operator):
     bl_label = "Import SoF2 Ghoul 2 Model (.glm)"
     bl_options = {"REGISTER", "UNDO"}
 
-    npc_files: bpy.props.EnumProperty(
-        name="NPC", description="All .npc files", items=get_npcs_items
-    )  # pyright: ignore [reportInvalidTypeForm]
+    # statt EnumProperty → Search + Auswahl
+    npc_search: bpy.props.StringProperty(name="Search your .npc file", default="")
+    npc_selected: bpy.props.StringProperty(name="Selected NPC", default="")
 
     # Explorer zeigt Datei-Auswahl an (z.B. glm)
     filepath: bpy.props.StringProperty(
@@ -162,19 +157,73 @@ class GLMImport(bpy.types.Operator):
     def draw(self, context):
         layout = self.layout
         layout.label(text="Bitte wähle dein SoF2 Basepath:", icon="FILE_FOLDER")
-        layout.prop(self, "basepath")  # zeigt den aktuellen Ordner
+        layout.prop(self, "basepath")
 
         if self.basepath and os.path.normpath(self.basepath).endswith(
             os.path.normpath("/base")
         ):
             box = layout.box()
             box.label(text="Basepath OK!", icon="CHECKMARK")
-            layout.prop(self, "npc_files")
-            layout.prop(self, "scale")
-            layout.prop(self, "skeletonFixes")
-            layout.prop(self, "loadAnimations")
-            layout.prop(self, "startFrame")
-            layout.prop(self, "numFrames")
+
+            # --- Neuer NPC-Browser ---
+            layout.prop(self, "npc_search", text="", icon="VIEWZOOM")
+
+            items = DataCache.get_npc_enum_items(self.basepath)
+            search = self.npc_search.strip().lower()
+            shown = 0
+            max_show = 10  # Limit, damit das Panel nicht explodiert
+
+            for ident, name, desc in items:
+                if search and search not in name.lower() and search not in desc.lower():
+                    continue
+                if shown >= max_show:
+                    layout.label(text=f"... {len(items)-shown} weitere NPCs ausgeblendet ...")
+                    break
+
+                row = layout.row(align=True)
+                # if no model: found in description mark alert!
+                no_model = False
+                if "model:" not in desc.lower():
+                    row.alert = True
+                    no_model = True
+
+                no_deathmatch = False
+                if "deathmatch: no" in desc.lower():
+                    no_deathmatch = True
+
+                op = row.operator(
+                    "glm.select_npc",
+                    text=name,
+                    emboss=True,
+                )
+                op.npc_id = ident
+                short_desc = ("(SP) " if no_deathmatch else "(MP)") + (" (No Model)"
+                    if no_model
+                    else "")
+                row.label(text=short_desc)
+                shown += 1
+
+            if not shown:
+                layout.label(text="Keine NPCs gefunden", icon="ERROR")
+
+            layout.separator()
+
+            if self.npc_selected:
+                box = layout.box()
+                row = box.row()
+                row.label(text=f"{self.npc_selected} selected", icon="CHECKMARK")
+
+                # restliche Optionen
+                layout.prop(self, "scale")
+                layout.prop(self, "skeletonFixes")
+                layout.prop(self, "loadAnimations")
+                layout.prop(self, "startFrame")
+                layout.prop(self, "numFrames")
+            else:
+                row = layout.row()
+                row.alert = True
+                row.label(text="Please select an NPC!", icon="ERROR")
+
         else:
             row = layout.row()
             row.alert = True
@@ -185,7 +234,7 @@ class GLMImport(bpy.types.Operator):
             self.report({"ERROR"}, "No Base Path selected!")
             return {"CANCELLED"}
 
-        key = self.npc_files
+        key = self.npc_selected
         if not key:
             self.report({"ERROR"}, "No NPC selected!")
             return {"CANCELLED"}
@@ -198,7 +247,7 @@ class GLMImport(bpy.types.Operator):
 
         if character_template:
             print(f"Found character template for {key}:")
-            character_model = character_template.get("char_template", {}).get(
+            character_model_path = character_template.get("char_template", {}).get(
                 "Model", None
             )
 
@@ -215,24 +264,35 @@ class GLMImport(bpy.types.Operator):
                 return {"CANCELLED"}
 
             _, skin_data = DataCache.get_skins(
-                getattr(self, "basepath", ""), character_model
+                getattr(self, "basepath", ""), character_model_path
             )
 
             selected_skin_data = find_skin_data_by_file_value(
                 skin_data, skin_file_data.get("File")
             )
-            if not selected_skin_data:
-                self.report({"ERROR"}, "No NPC selected!")
-                return {"CANCELLED"}
 
-            print(f"Loading Model: {character_model}")
+            parent_template = character_template.get("group_info", {}).get(
+                "ParentTemplate", None
+            )
+            if parent_template:
+                print(f"NPC got a Parent NPC template: {parent_template}")
+
+            # TODO add a checkbox to proceed without g2skins, BUT everything probably will be pink!
+            if not selected_skin_data:
+                self.report(
+                    {"ERROR"},
+                    "No g2skin file found! Check your loaded .npc file definition if you load one.",
+                )
+                return {"CANCELLED"}
 
             # de-percentagionise scale
             scale = self.scale / 100
 
             # load GLM
             scene = SoF2G2Scene.Scene(self.basepath)
-            success, message = scene.loadFromGLM(character_model, selected_skin_data)
+            success, message = scene.loadFromGLM(
+                character_model_path, selected_skin_data
+            )
             if not success:
                 self.report({"ERROR"}, message)
                 return {"FINISHED"}
@@ -276,6 +336,21 @@ class GLMImport(bpy.types.Operator):
             # bei Datei-Auswahl basepath extrahieren
             self.basepath = os.path.dirname(self.filepath)
         return True
+
+
+class GLM_OT_select_npc(bpy.types.Operator):
+    bl_idname = "glm.select_npc"
+    bl_label = "Select NPC"
+    bl_description = "Wähle diesen NPC aus"
+
+    npc_id: bpy.props.StringProperty()
+
+    def execute(self, context):
+        op = context.active_operator
+        if hasattr(op, "npc_selected"):
+            op.npc_selected = self.npc_id
+            self.report({"INFO"}, f"NPC gewählt: {self.npc_id}")
+        return {"FINISHED"}
 
 
 class GLAImport(bpy.types.Operator):
@@ -464,6 +539,7 @@ def menu_func_import_glm(self, context):
 # menu button init/destroy
 def register():
     bpy.utils.register_class(GLMImport)
+    bpy.utils.register_class(GLM_OT_select_npc)
 
     bpy.utils.register_class(ObjectAddG2Properties)
     bpy.utils.register_class(ObjectRemoveG2Properties)
@@ -473,6 +549,7 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(GLMImport)
+    bpy.utils.unregister_class(GLM_OT_select_npc)
 
     bpy.utils.unregister_class(ObjectAddG2Properties)
     bpy.utils.unregister_class(ObjectRemoveG2Properties)

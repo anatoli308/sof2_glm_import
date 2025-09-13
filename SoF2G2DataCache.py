@@ -243,7 +243,7 @@ def get_skins(
     _cached_model_name = model_name
     _cached_items = items
     _cached_skin_data = skin_data
-    print("Available skins:", len(items))
+    print("Available .g2skin files:", len(items))
     return items, skin_data
 
 
@@ -271,6 +271,7 @@ def get_npc_enum_items(basepath):
                 occupation = ct.get("Occupation", "")
                 model = ct.get("Model", "")
                 comments_orig = ct.get("comments", "")
+                deathmatch = ct.get("Deathmatch", "")
 
                 # Bessere Beschreibung zusammenbauen
                 comments = f"{comments_orig}"
@@ -283,9 +284,10 @@ def get_npc_enum_items(basepath):
                     extra_info.append(f"Rank: {rank}")
                 if occupation:
                     extra_info.append(f"Occupation: {occupation}")
+                if deathmatch:
+                    extra_info.append(f"Deathmatch: {deathmatch}")
                 if model:
                     extra_info.append(f"Model: {model}")
-
                 if extra_info:
                     comments += " [" + ", ".join(extra_info) + "]"
 
