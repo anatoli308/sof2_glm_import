@@ -645,73 +645,159 @@ class MdxaAnimation:
         else:
             print(f"No clips defined, using all {numFrames} frames")
 
-        # show progress every 1000 steps, but at least 10 times)
-        progressStep = min(1000, round(numFrames / 10))
-        nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
-        lastFrameNum = 0
-        print("Processing animation frames...")
+        # **NEW: Create separate actions for each clip OR use original logic**
+        if hasattr(self, 'animation_clips') and self.animation_clips:
+            print("Creating separate Blender actions for each clip...")
+            
+            # Create animation data
+            if not armature.animation_data:
+                armature.animation_data_create()
+            
+            # Process each clip separately
+            for clip in self.animation_clips:
+                clip_name = clip["name"]
+                start_frame = clip["start_frame"]
+                end_frame = clip["end_frame"]
+                duration = clip["duration"]
+                
+                print(f"Processing clip: {clip_name} (frames {start_frame}-{end_frame})")
+                
+                # Create action for this clip
+                action = bpy.data.actions.new(name=clip_name)
+                armature.animation_data.action = action
+                
+                # **Set action frame range directly (0 to duration) for Unity compatibility**
+                action.frame_range = (0, duration) # TODO anatoli still not sure if unity need -1 or not 0based
+                
+                # **Set FPS for this specific clip**
+                clip_fps = clip.get("fps", 20)  # Get FPS from clip data
+                scene.render.fps = clip_fps
+                
+                # **Set scene frame range for this clip (0 to duration)**
+                scene.frame_start = 0
+                scene.frame_end = duration
+                print(f"  DEBUG: Set action frame range to 0-{duration} and FPS to {clip_fps} for clip {clip_name}")
+                
+                # Process frames for this clip
+                for local_frame_num in range(duration):
+                    global_frame_num = start_frame + local_frame_num
+                    
+                    if global_frame_num >= len(self.frames):
+                        break
+                        
+                    frame = self.frames[global_frame_num]
+                    
+                    # Set current frame (local frame number 0 to duration-1)
+                    scene.frame_set(local_frame_num)
+                    
+                    # Process bone transformations (same as original)
+                    offsets: Dict[int, mathutils.Matrix] = {}
+                    for index in hierarchyOrder:
+                        bpy.ops.object.mode_set(mode="POSE", toggle=False)
+                        mdxaBone = skeleton.bones[index]
+                        assert mdxaBone.index == index
+                        bonePoolIndex = frame.boneIndices[index]
+                        # get offset transformation matrix, relative to parent
+                        offset = downcast(List[SoF2G2Math.CompBone], self.bonePool.bones)[
+                            bonePoolIndex
+                        ].matrix
+                        # turn into absolute offset matrix (already is if this is top level bone)
+                        if mdxaBone.parent != -1:
+                            offset = matrix_overload_cast(offsets[mdxaBone.parent] @ offset)
+                        # save this absolute offset for use by children
+                        offsets[index] = offset
+                        # calculate the actual position
+                        transformation = matrix_overload_cast(offset @ basePoses[index])
+                        # flip axes as required for blender bone
+                        SoF2G2Math.GLABoneRotToBlender(transformation)
 
-        #   Export animation (ORIGINAL WORKING CODE)
-        for frameNum, frame in enumerate(self.frames):
-            # show progress bar / remaining time
-            if time.time() >= nextProgressDisplayTime:
-                numProcessedFrames = frameNum - lastFrameNum
-                framesRemaining = numFrames - frameNum
-                # only take the frames since the last update into account since the speed varies.
-                # speed's roughly inversely proportional to the current frame number so I could use that to predict remaining time...
-                timeRemaining = (
-                    PROGRESS_UPDATE_INTERVAL * framesRemaining / numProcessedFrames
-                )
+                        pose_bone = bones[index]
+                        pose_bone.matrix = transformation
+                        pose_bone.scale = [1, 1, 1]
+                        
+                        
+                        pose_bone.keyframe_insert("location")
+                        pose_bone.keyframe_insert("rotation_quaternion")
+                        bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
+                
+                
+                
+                print(f"Created action: {clip_name} with {duration} frames")
+            
+            # **Restore original FPS and set scene back to first frame**
+            scene.render.fps = 24  # Restore default FPS
+            scene.frame_current = 0
+            
+        else:
+            # **FALLBACK: Original behavior for all frames**
+            print("Processing all frames as single animation...")
+            
+            # show progress every 1000 steps, but at least 10 times)
+            progressStep = min(1000, round(numFrames / 10))
+            nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
+            lastFrameNum = 0
 
-                print(
-                    "Frame {}/{} - {:.2%} - remaining time: ca. {:.0f}m {:.0f}s".format(
-                        frameNum,
-                        numFrames,
-                        frameNum / numFrames,
-                        timeRemaining // 60,
-                        timeRemaining % 60,
+            #   Export animation (ORIGINAL WORKING CODE)
+            for frameNum, frame in enumerate(self.frames):
+                # show progress bar / remaining time
+                if time.time() >= nextProgressDisplayTime:
+                    numProcessedFrames = frameNum - lastFrameNum
+                    framesRemaining = numFrames - frameNum
+                    # only take the frames since the last update into account since the speed varies.
+                    # speed's roughly inversely proportional to the current frame number so I could use that to predict remaining time...
+                    timeRemaining = (
+                        PROGRESS_UPDATE_INTERVAL * framesRemaining / numProcessedFrames
                     )
-                )
 
-                lastFrameNum = frameNum
-                nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
+                    print(
+                        "Frame {}/{} - {:.2%} - remaining time: ca. {:.0f}m {:.0f}s".format(
+                            frameNum,
+                            numFrames,
+                            frameNum / numFrames,
+                            timeRemaining // 60,
+                            timeRemaining % 60,
+                        )
+                    )
 
-            # set current frame
-            scene.frame_set(frameNum)
+                    lastFrameNum = frameNum
+                    nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
 
-            # absolute offset matrices by bone index
-            offsets: Dict[int, mathutils.Matrix] = {}
-            for index in hierarchyOrder:
-                bpy.ops.object.mode_set(mode="POSE", toggle=False)
-                mdxaBone = skeleton.bones[index]
-                assert mdxaBone.index == index
-                bonePoolIndex = frame.boneIndices[index]
-                # get offset transformation matrix, relative to parent
-                offset = downcast(List[SoF2G2Math.CompBone], self.bonePool.bones)[
-                    bonePoolIndex
-                ].matrix
-                # turn into absolute offset matrix (already is if this is top level bone)
-                if mdxaBone.parent != -1:
-                    offset = matrix_overload_cast(offsets[mdxaBone.parent] @ offset)
-                # save this absolute offset for use by children
-                offsets[index] = offset
-                # calculate the actual position
-                transformation = matrix_overload_cast(offset @ basePoses[index])
-                # flip axes as required for blender bone
-                SoF2G2Math.GLABoneRotToBlender(transformation)
+                # set current frame
+                scene.frame_set(frameNum)
 
-                pose_bone = bones[index]
-                # pose_bone.matrix = transformation * scaleMatrix
-                pose_bone.matrix = transformation
-                # in the _humanoid face, the scale gets changed. that messes the re-export up. FIXME: understand why. Is there a problem?
-                pose_bone.scale = [1, 1, 1]
-                pose_bone.keyframe_insert("location")
-                pose_bone.keyframe_insert("rotation_quaternion")
-                # hackish way to force the matrix to update. FIXME: this seems to slow the process down a lot
-                bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
+                # absolute offset matrices by bone index
+                offsets: Dict[int, mathutils.Matrix] = {}
+                for index in hierarchyOrder:
+                    bpy.ops.object.mode_set(mode="POSE", toggle=False)
+                    mdxaBone = skeleton.bones[index]
+                    assert mdxaBone.index == index
+                    bonePoolIndex = frame.boneIndices[index]
+                    # get offset transformation matrix, relative to parent
+                    offset = downcast(List[SoF2G2Math.CompBone], self.bonePool.bones)[
+                        bonePoolIndex
+                    ].matrix
+                    # turn into absolute offset matrix (already is if this is top level bone)
+                    if mdxaBone.parent != -1:
+                        offset = matrix_overload_cast(offsets[mdxaBone.parent] @ offset)
+                    # save this absolute offset for use by children
+                    offsets[index] = offset
+                    # calculate the actual position
+                    transformation = matrix_overload_cast(offset @ basePoses[index])
+                    # flip axes as required for blender bone
+                    SoF2G2Math.GLABoneRotToBlender(transformation)
 
-        scene.frame_current = 1
-        
+                    pose_bone = bones[index]
+                    # pose_bone.matrix = transformation * scaleMatrix
+                    pose_bone.matrix = transformation
+                    # in the _humanoid face, the scale gets changed. that messes the re-export up. FIXME: understand why. Is there a problem?
+                    pose_bone.scale = [1, 1, 1]
+                    pose_bone.keyframe_insert("location")
+                    pose_bone.keyframe_insert("rotation_quaternion")
+                    # hackish way to force the matrix to update. FIXME: this seems to slow the process down a lot
+                    bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
+
+            scene.frame_current = 1
+
         endTime = time.time()
         print(f"SAFE Animation import completed in {endTime - startTime:.2f} seconds")
         print(f"Processed {numFrames} frames with {len(bones)} bones")
@@ -1064,8 +1150,11 @@ class GLA:
                 return False, ErrorMessage(
                     "Existing skeleton_root object is no armature!"
                 )
-            self.skeleton_armature = self.skeleton_object.data
-            self.skeleton_object.g2_prop_scale = self.header.scale * 100
+            self.skeleton_armature = downcast(
+                bpy.types.Armature,
+                optional_cast(bpy.types.Object, self.skeleton_object).data,
+            )
+            self.skeleton_object.g2_prop_scale = self.header.scale * 100  # pyright: ignore [reportAttributeAccessIssue]
         # If there's no skeleton, there may yet still be an armature. Use that.
         elif "skeleton_root" in bpy.data.armatures:
             print("Found skeleton_root armature, trying to use it.")
