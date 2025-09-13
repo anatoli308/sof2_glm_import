@@ -32,7 +32,6 @@ PROFILE = False
 # show progress & remaining time every 30 seconds.
 PROGRESS_UPDATE_INTERVAL = 30
 
-
 def decode(bs: bytes) -> str:
     end = bs.find(b"\0")  # find null termination
     if end == -1:  # if none exists, there is no end.
@@ -399,7 +398,7 @@ class MdxaAnimation:
                             # Check if clip overlaps with the specified range
                             # Clip overlaps if: clip_start <= range_end AND clip_end >= range_start
                             if clip_start_frame > range_end or clip_end_frame < range_start:
-                                print(f"Skipping clip {os.path.basename(xsi_path)} (frames {clip_start_frame}-{clip_end_frame}) - outside range {range_start}-{range_end}")
+                                #print(f"Skipping clip {os.path.basename(xsi_path)} (frames {clip_start_frame}-{clip_end_frame}) - outside range {range_start}-{range_end}")
                                 continue
                         
                         # Create clip info
@@ -594,6 +593,15 @@ class MdxaAnimation:
         startTime = time.time()
         print("Starting SAFE animation import with filtering...")
         
+        # **PROFILING: Track detailed timing**
+        import time
+        timing_stats = {
+            'mode_switches': 0,
+            'keyframe_inserts': 0,
+            'matrix_calculations': 0,
+            'bone_transformations': 0
+        }
+        
         #   Bone Position Set Order
         # bones have to be set in hierarchical order - their position depends on their parent's absolute position, after all.
         # so this is the order in which bones have to be processed.
@@ -667,7 +675,7 @@ class MdxaAnimation:
                 armature.animation_data.action = action
                 
                 # **Set action frame range directly (0 to duration) for Unity compatibility**
-                action.frame_range = (0, duration) # TODO anatoli still not sure if unity need -1 or not 0based
+                action.frame_range = (0, duration) # TODO anatoli still not sure if unity need -1 or not 0based keep this for now
                 
                 #TODO default FPS Anatoli wechselbar machen??
                 # **Set FPS for this specific clip**
@@ -677,7 +685,7 @@ class MdxaAnimation:
                 # **Set scene frame range for this clip (0 to duration)**
                 scene.frame_start = 0
                 scene.frame_end = duration
-                print(f"  DEBUG: Set action frame range to 0-{duration} and FPS to {clip_fps} for clip {clip_name}")
+                #print(f"  DEBUG: Set action frame range to 0-{duration} and FPS to {clip_fps} for clip {clip_name}")
                 
                 # Process frames for this clip
                 for local_frame_num in range(duration):
@@ -694,10 +702,16 @@ class MdxaAnimation:
                     # Process bone transformations (same as original)
                     offsets: Dict[int, mathutils.Matrix] = {}
                     for index in hierarchyOrder:
+                        mode_start = time.time()
                         bpy.ops.object.mode_set(mode="POSE", toggle=False)
+                        timing_stats['mode_switches'] += time.time() - mode_start
+                        
                         mdxaBone = skeleton.bones[index]
                         assert mdxaBone.index == index
                         bonePoolIndex = frame.boneIndices[index]
+                        
+                        # **PROFILING: Time matrix calculations**
+                        matrix_start = time.time()
                         # get offset transformation matrix, relative to parent
                         offset = downcast(List[SoF2G2Math.CompBone], self.bonePool.bones)[
                             bonePoolIndex
@@ -711,15 +725,25 @@ class MdxaAnimation:
                         transformation = matrix_overload_cast(offset @ basePoses[index])
                         # flip axes as required for blender bone
                         SoF2G2Math.GLABoneRotToBlender(transformation)
+                        timing_stats['matrix_calculations'] += time.time() - matrix_start
 
+                        # **PROFILING: Time bone transformations**
+                        bone_start = time.time()
                         pose_bone = bones[index]
                         pose_bone.matrix = transformation
                         pose_bone.scale = [1, 1, 1]
+                        timing_stats['bone_transformations'] += time.time() - bone_start
                         
-                        
+                        # **PROFILING: Time keyframe inserts**
+                        keyframe_start = time.time()
                         pose_bone.keyframe_insert("location")
                         pose_bone.keyframe_insert("rotation_quaternion")
+                        timing_stats['keyframe_inserts'] += time.time() - keyframe_start
+                        
+                        # **PROFILING: Time mode switches**
+                        mode_start = time.time()
                         bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
+                        timing_stats['mode_switches'] += time.time() - mode_start
                 
                 
                 
@@ -802,6 +826,16 @@ class MdxaAnimation:
         endTime = time.time()
         print(f"SAFE Animation import completed in {endTime - startTime:.2f} seconds")
         print(f"Processed {numFrames} frames with {len(bones)} bones")
+        
+        # **PROFILING: Print detailed timing breakdown**
+        total_time = endTime - startTime
+        print("\n=== PERFORMANCE BREAKDOWN ===")
+        print(f"Mode Switches: {timing_stats['mode_switches']:.2f}s ({timing_stats['mode_switches']/total_time*100:.1f}%)")
+        print(f"Keyframe Inserts: {timing_stats['keyframe_inserts']:.2f}s ({timing_stats['keyframe_inserts']/total_time*100:.1f}%)")
+        print(f"Matrix Calculations: {timing_stats['matrix_calculations']:.2f}s ({timing_stats['matrix_calculations']/total_time*100:.1f}%)")
+        print(f"Bone Transformations: {timing_stats['bone_transformations']:.2f}s ({timing_stats['bone_transformations']/total_time*100:.1f}%)")
+        print(f"Other Operations: {total_time - sum(timing_stats.values()):.2f}s ({(total_time - sum(timing_stats.values()))/total_time*100:.1f}%)")
+        print("=============================")
 
 
 class AnimationLoadMode(Enum):
@@ -1202,7 +1236,7 @@ class GLA:
                     print("=== Profile stop ===")
                 else:
                     self.animation.saveToBlender(
-                        self.skeleton, self.skeleton_object, self.header.scale
+                        self.skeleton, self.skeleton_object, self.header.scale, data_frames_file    
                     )
                 profiler.stop("applying animations")
 
@@ -1232,7 +1266,7 @@ class GLA:
 
                 print("=== Profile start ===")
                 cProfile.runctx(
-                    "self.animation.saveToBlender(self.skeleton, self.skeleton_object, self.header.scale)",
+                    "self.animation.saveToBlender(self.skeleton, self.skeleton_object, self.header.scale, data_frames_file)",
                     globals(),
                     locals(),
                 )

@@ -275,7 +275,7 @@ def get_npc_enum_items(basepath):
 
                 # Bessere Beschreibung zusammenbauen
                 comments = f"{comments_orig}"
-                extra_info = []
+                extra_info = []#extra infos used for better search 
                 if npc_filename:
                     extra_info.append(f"File Name: {npc_filename}")
                 if formal_name:
@@ -286,6 +286,8 @@ def get_npc_enum_items(basepath):
                     extra_info.append(f"Occupation: {occupation}")
                 if deathmatch:
                     extra_info.append(f"Deathmatch: {deathmatch}")
+                if not deathmatch:
+                    extra_info.append("Multiplayer!")
                 if model:
                     extra_info.append(f"Model: {model}")
                 if extra_info:

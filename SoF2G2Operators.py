@@ -262,41 +262,28 @@ class GLMImport(bpy.types.Operator):
                 "Model", None
             )
 
-            """
-            character_skeleton_name = character_template.get("group_info", {}).get(
-                "Skeleton", None
+            # if true means is singleplayer!
+            has_deathmatch_flag = character_template.get("char_template", {}).get(
+                "Deathmatch", None
             )
-            text = open(
-                os.path.normpath(
-                    self.basepath + "/skeletons/" + character_skeleton_name
-                ),
-                "r",
-                encoding="utf-8",
-            ).read()
-            data_skl_file = skl_parser.parse_skl(text)
-            """
 
             character_skeleton_name = character_template.get("group_info", {}).get(
                 "Skeleton", None
             )
+            data_frames_file_path = os.path.normpath(
+                self.basepath
+                + "/skeletons/"
+                + os.path.splitext(character_skeleton_name)[0]
+                + (".frames" if has_deathmatch_flag else "_mp.frames")
+            )
+            print(f"Loading frames file: {data_frames_file_path}")
             text = open(
-                os.path.normpath(
-                    self.basepath
-                    + "/skeletons/"
-                    + os.path.splitext(character_skeleton_name)[0]
-                    + ".frames"
-                ),
+                data_frames_file_path,
                 "r",
                 encoding="utf-8",
             ).read()
             data_frames_file = frames_parser.parse_frames(text)
 
-            """
-            mapped = map_frames_into_skl(
-                data_skl_file, data_frames_file, inplace=False, debug=False
-            )
-            print("Mapping completed!")
-            """
             character_template_skin_files = character_template.get(
                 "char_template", {}
             ).get("Skin", {})
@@ -351,13 +338,17 @@ class GLMImport(bpy.types.Operator):
                 return {"FINISHED"}
 
             glafile = scene.getRequestedGLA()
+            if not has_deathmatch_flag:
+                glafile = glafile + "_mp"
+
+            print(f"Loading GLA file: {glafile} ")
             loadAnimations = SoF2G2GLA.AnimationLoadMode[self.loadAnimations]
             success, message = scene.loadFromGLA(
                 glafile,
                 loadAnimations,
                 cast(int, self.startFrame),
                 cast(int, self.numFrames),
-                data_frames_file
+                data_frames_file,
             )
             if not success:
                 self.report({"ERROR"}, message)
@@ -370,7 +361,7 @@ class GLMImport(bpy.types.Operator):
                 guessTextures,
                 loadAnimations != SoF2G2GLA.AnimationLoadMode.NONE,
                 SkeletonFixes[self.skeletonFixes],
-                data_frames_file
+                data_frames_file,
             )
             if not success:
                 self.report({"ERROR"}, message)
