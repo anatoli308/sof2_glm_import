@@ -874,7 +874,7 @@ class MdxmSurface:
         assert file.tell() == startPos + self.ofsEnd
 
     # returns the created object
-    def saveToBlender(self, data: ImportMetadata, lodLevel: int):
+    def saveToBlender(self, data: ImportMetadata, lodLevel: int, selected_skin_data: dict):
         #  retrieve metadata (same across LODs)
         surfaceData = data.surfaceDataCollection.surfaces[self.index]
         # blender won't let us create multiple things with the same name, so we add a LOD-suffix
@@ -958,18 +958,58 @@ class MdxmSurface:
         bpy.context.view_layer.objects.active = obj
 
         # set ghoul2 specific properties
-        obj.g2_prop_name = name  # pyright: ignore [reportAttributeAccessIssue]
-        obj.g2_prop_shader = surfaceData.shader.decode()  # pyright: ignore [reportAttributeAccessIssue]
-        obj.g2_prop_tag = not not (surfaceData.flags & SoF2G2Constants.SURFACEFLAG_TAG)  # pyright: ignore [reportAttributeAccessIssue]
-        obj.g2_prop_off = not not (surfaceData.flags & SoF2G2Constants.SURFACEFLAG_OFF)  # pyright: ignore [reportAttributeAccessIssue]
+        obj["g2_prop_name"] = name  # pyright: ignore [reportAttributeAccessIssue]
+        obj["g2_prop_shader"] = surfaceData.shader.decode()  # pyright: ignore [reportAttributeAccessIssue]
+        obj["g2_prop_tag"] = not not (
+            surfaceData.flags & SoF2G2Constants.SURFACEFLAG_TAG
+        )  # pyright: ignore [reportAttributeAccessIssue]
+        obj["g2_prop_off"] = not not (
+            surfaceData.flags & SoF2G2Constants.SURFACEFLAG_OFF
+        )  # pyright: ignore [reportAttributeAccessIssue]
+
+        # zusätzliche custom properties - anatoli
+        self._add_custom_properties(obj, selected_skin_data)
 
         # sofort ausblenden, wenn OFF - anatoli
-        obj.hide_set(obj.g2_prop_off)
-        obj.hide_render = obj.g2_prop_off
+        obj.hide_set(obj["g2_prop_off"])
+        obj.hide_render = obj["g2_prop_off"]
 
         # print(f"object {obj} flags: off={obj.g2_prop_off}, tag={obj.g2_prop_tag} SAVED")  # pyright: ignore [reportAttributeAccessIssue]
         # return object so hierarchy etc. can be set
         return obj
+
+    def _add_custom_properties(self, obj, selected_g2skin_file_data: dict):
+        """Fügt zusätzliche custom properties zum Objekt hinzu"""
+        """
+        # Geometrie-Informationen
+        obj["m_vertex_count"] = len(obj.data.vertices)
+        obj["m_face_count"] = len(obj.data.polygons)
+        obj["m_edge_count"] = len(obj.data.edges)
+
+        # Import-Informationen
+        obj["m_import_time"] = bpy.context.scene.frame_current
+        obj["m_model_type"] = "ghoul2_mesh"
+
+        # UV und Material-Informationen
+        obj["m_has_uv"] = len(obj.data.uv_layers) > 0
+        obj["m_uv_layer_count"] = len(obj.data.uv_layers)
+        obj["m_material_count"] = len(obj.data.materials)
+
+        # Bounding Box Information
+        bbox = obj.bound_box
+        obj["m_bbox_size_x"] = bbox[6][0] - bbox[0][0]
+        obj["m_bbox_size_y"] = bbox[6][1] - bbox[0][1]
+        obj["m_bbox_size_z"] = bbox[6][2] - bbox[0][2]
+        """
+
+        #selected_g2skin_file_data shader über g2skin laden / erstellen
+        #TODO shader für model in g2skin laden und erstellen / einsetzen
+
+        # Weitere nützliche Properties
+        obj["m_is_visible"] = not obj["g2_prop_off"]
+        obj["m_is_tagged"] = obj["g2_prop_tag"]
+        obj["m_shader_name"] = obj["g2_prop_shader"]
+        obj["m_prop_name"] = obj["g2_prop_name"]
 
     # fill offset and number variables
     def _calculateOffsets(self):
@@ -1105,12 +1145,12 @@ class MdxmLOD:
             ofsEnd=-1,  # FIXME: avoid this invalid state
         ), NoError
 
-    def saveToBlender(self, data: ImportMetadata, root: bpy.types.Object):
+    def saveToBlender(self, data: ImportMetadata, root: bpy.types.Object, selected_skin_data: dict):
         # 1st pass: create objects
         objects = []
         for surface in self.surfaces:
             if surface is not None:
-                obj = surface.saveToBlender(data, self.level)
+                obj = surface.saveToBlender(data, self.level, selected_skin_data)
                 objects.append(obj)
         # 2nd pass: set parent relations
         for i, obj in enumerate(objects):
@@ -1188,12 +1228,12 @@ class MdxmLODCollection:
         for LOD in self.LODs:
             LOD.saveToFile(file)
 
-    def saveToBlender(self, data: ImportMetadata):
+    def saveToBlender(self, data: ImportMetadata, selected_skin_data: dict):
         for i, LOD in enumerate(self.LODs):
             root = bpy.data.objects.new("model_root_" + str(i), None)
             root.parent = data.scene_root
             bpy.context.scene.collection.objects.link(root)
-            LOD.saveToBlender(data, root)
+            LOD.saveToBlender(data, root, selected_skin_data)
 
     def getSize(self):
         size = 0
@@ -1404,7 +1444,7 @@ class GLM:
         if not success:
             return False, message
 
-        self.LODCollection.saveToBlender(data)
+        self.LODCollection.saveToBlender(data, selected_skin_data)
         profiler.stop("creating surfaces")
         return True, NoError
 

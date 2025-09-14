@@ -1,5 +1,11 @@
 from .mod_reload import reload_modules
-reload_modules(locals(), __package__, ["SoF2Materialmanager","SoF2Filesystem", "SoF2Stringhelper"], [".casts", ".error_types"])  # nopep8
+
+reload_modules(
+    locals(),
+    __package__,
+    ["SoF2Materialmanager", "SoF2Filesystem", "SoF2Stringhelper"],
+    [".casts", ".error_types"],
+)  # nopep8
 
 from . import SoF2Filesystem  # noqa: E402
 from . import SoF2Stringhelper  # noqa: E402
@@ -7,11 +13,12 @@ from .error_types import ErrorMessage, NoError  # noqa: E402
 
 import bpy  # noqa: E402  # pyright: ignore[reportMissingImports]
 import os  # noqa: E402
-import re # noqa: E402
+import re  # noqa: E402
 
 log_level = os.getenv("LOG_LEVEL", "INFO")
 
-class MaterialManager():
+
+class MaterialManager:
     def __init__(self):
         self.basepath = ""
         self.materials = {}
@@ -35,15 +42,17 @@ class MaterialManager():
 
             # Falls mehrere groups existieren, nimm den ersten Treffer
             for grp in mat.get("groups", []):
-                if "texture1" in grp: # TODO Vermutlich mehr als texture1 - textureX möglich erweitern!
+                if (
+                    "texture1" in grp
+                ):  # TODO Vermutlich mehr als texture1 - textureX möglich erweitern!
                     tex = grp["texture1"].strip('"')
-                    if log_level =="DEBUG":
+                    if log_level == "DEBUG":
                         print(f"Mapping material '{mat_name}' to texture '{tex}'")
                     self.skin[mat_name] = tex
                     break
                 elif "shader1" in grp:
                     shader = grp["shader1"].strip('"')
-                    if log_level =="DEBUG": # TODO analog s.o.
+                    if log_level == "DEBUG":  # TODO analog s.o.
                         print(f"Mapping material '{mat_name}' to shader '{shader}'")
                     self.skin[mat_name] = shader
                     break
@@ -84,7 +93,9 @@ class MaterialManager():
             if not name_candidate:
                 return False, ""
             # if candidate contains extension already, FindFile should still work; try as-is
-            return SoF2Filesystem.FindFile(name_candidate, self.basepath, ["jpg", "png", "tga", "dds"])
+            return SoF2Filesystem.FindFile(
+                name_candidate, self.basepath, ["jpg", "png", "tga", "dds"]
+            )
 
         def _find_sidecar_images(base_path_abs: str):
             """
@@ -92,7 +103,13 @@ class MaterialManager():
             in same directory sharing the basename + suffix.
             Returns dict of possible maps: normal, roughness, metallic, ao, emission
             """
-            res = {"normal": None, "roughness": None, "metallic": None, "ao": None, "emission": None}
+            res = {
+                "normal": None,
+                "roughness": None,
+                "metallic": None,
+                "ao": None,
+                "emission": None,
+            }
             if not base_path_abs or not os.path.isfile(base_path_abs):
                 return res
             folder = os.path.dirname(base_path_abs)
@@ -103,7 +120,7 @@ class MaterialManager():
                 "roughness": ["_r", "_rough", "_roughness"],
                 "metallic": ["_m", "_metal", "_metallic"],
                 "ao": ["_ao", "_ambientocclusion"],
-                "emission": ["_emit", "_emiss", "_emission"]
+                "emission": ["_emit", "_emiss", "_emission"],
             }
             for typ, suffs in suffixes.items():
                 for s in suffs:
@@ -120,7 +137,7 @@ class MaterialManager():
         base_texture_path = None
         if shader_def and isinstance(shader_def, str):
             # suche map tokens wie: map textures/foo/bar
-            m = re.search(r'\bmap\s+([^\s\{\n]+)', shader_def)
+            m = re.search(r"\bmap\s+([^\s\{\n]+)", shader_def)
             if m:
                 candidate = m.group(1).strip().strip('"')
                 success, abs_path = _try_find_file(candidate)
@@ -146,7 +163,7 @@ class MaterialManager():
         # 4) Suche Sidecar maps (normal, roughness, metallic, ao, emission)
         sidecars = _find_sidecar_images(base_texture_path)
 
-        # 5) Node-Setup: Principled BSDF
+        # 5) Node-Setup: Principled BSDF (Unity-optimized)
         mat.use_nodes = True
         nodes = mat.node_tree.nodes
         links = mat.node_tree.links
@@ -155,24 +172,51 @@ class MaterialManager():
         for node in nodes:
             nodes.remove(node)
 
-        output_node = nodes.new(type='ShaderNodeOutputMaterial')
+        output_node = nodes.new(type="ShaderNodeOutputMaterial")
         output_node.location = (400, 0)
 
-        principled = nodes.new(type='ShaderNodeBsdfPrincipled')
+        principled = nodes.new(type="ShaderNodeBsdfPrincipled")
         principled.location = (0, 0)
 
-        # helper to create image texture node
-        def _create_image_node(abs_path: str, label: str, colorspace: str = 'Non-Color', location=( -600, 0 )):
+        # **UNITY OPTIMIZATION: Set default values for better Unity export**
+        principled.inputs["Roughness"].default_value = 0.5  # Default roughness
+        principled.inputs["Metallic"].default_value = 0.0  # Default non-metallic
+
+        # **UNITY OPTIMIZATION: Set specular if available (Blender version dependent)**
+        try:
+            principled.inputs["Specular"].default_value = 0.5  # Unity standard specular
+        except KeyError:
+            # Specular input not available in this Blender version
+            pass
+
+        # helper to create image texture node (Unity-optimized)
+        def _create_image_node(
+            abs_path: str, label: str, colorspace: str = "Non-Color", location=(-600, 0)
+        ):
             try:
                 img = bpy.data.images.load(abs_path, check_existing=True)
+
+                # **UNITY OPTIMIZATION: Set texture settings for better Unity export**
+                img.use_fake_user = True  # Prevent texture deletion
+                img.pack()  # Pack texture into .blend file for Unity
+
+                # **UNITY OPTIMIZATION: Set texture compression settings**
+                if img.size[0] > 1024 or img.size[1] > 1024:
+                    # Large textures - suggest compression
+                    img.use_alpha = False  # Disable alpha if not needed
+
             except Exception as e:
                 if log_level == "DEBUG":
                     print(f"Could not load image {abs_path}: {e}")
                 return None
-            tex = nodes.new(type='ShaderNodeTexImage')
+            tex = nodes.new(type="ShaderNodeTexImage")
             tex.image = img
             tex.label = label
             tex.location = location
+
+            # **UNITY OPTIMIZATION: Set interpolation for better quality**
+            tex.interpolation = "Linear"  # Better quality than "Closest"
+
             # set colorspace
             try:
                 tex.image.colorspace_settings.name = colorspace
@@ -181,62 +225,89 @@ class MaterialManager():
             return tex
 
         # BASE COLOR (sRGB)
-        base_tex_node = _create_image_node(base_texture_path, "BaseColor", colorspace='sRGB', location=(-600, 300))
+        base_tex_node = _create_image_node(
+            base_texture_path, "BaseColor", colorspace="sRGB", location=(-600, 300)
+        )
         if base_tex_node:
-            links.new(base_tex_node.outputs['Color'], principled.inputs['Base Color'])
+            links.new(base_tex_node.outputs["Color"], principled.inputs["Base Color"])
 
         # NORMAL
-        normal_node = None
         if sidecars.get("normal"):
-            n_tex = _create_image_node(sidecars["normal"], "Normal", colorspace='Non-Color', location=(-600, 0))
+            n_tex = _create_image_node(
+                sidecars["normal"], "Normal", colorspace="Non-Color", location=(-600, 0)
+            )
             if n_tex:
-                normal_map = nodes.new(type='ShaderNodeNormalMap')
+                normal_map = nodes.new(type="ShaderNodeNormalMap")
                 normal_map.location = (-300, 0)
-                links.new(n_tex.outputs['Color'], normal_map.inputs['Color'])
-                links.new(normal_map.outputs['Normal'], principled.inputs['Normal'])
-                normal_node = n_tex
+                links.new(n_tex.outputs["Color"], normal_map.inputs["Color"])
+                links.new(normal_map.outputs["Normal"], principled.inputs["Normal"])
 
         # ROUGHNESS
         if sidecars.get("roughness"):
-            r_tex = _create_image_node(sidecars["roughness"], "Roughness", colorspace='Non-Color', location=(-600, -150))
+            r_tex = _create_image_node(
+                sidecars["roughness"],
+                "Roughness",
+                colorspace="Non-Color",
+                location=(-600, -150),
+            )
             if r_tex:
-                links.new(r_tex.outputs['Color'], principled.inputs['Roughness'])
+                links.new(r_tex.outputs["Color"], principled.inputs["Roughness"])
 
         # METALLIC
         if sidecars.get("metallic"):
-            m_tex = _create_image_node(sidecars["metallic"], "Metallic", colorspace='Non-Color', location=(-600, -300))
+            m_tex = _create_image_node(
+                sidecars["metallic"],
+                "Metallic",
+                colorspace="Non-Color",
+                location=(-600, -300),
+            )
             if m_tex:
-                links.new(m_tex.outputs['Color'], principled.inputs['Metallic'])
+                links.new(m_tex.outputs["Color"], principled.inputs["Metallic"])
 
         # AO -> multiply with base color (if both present)
         if sidecars.get("ao") and base_tex_node:
-            ao_tex = _create_image_node(sidecars["ao"], "AO", colorspace='Non-Color', location=(-600, 450))
+            ao_tex = _create_image_node(
+                sidecars["ao"], "AO", colorspace="Non-Color", location=(-600, 450)
+            )
             if ao_tex:
-                mix = nodes.new(type='ShaderNodeMixRGB')
-                mix.blend_type = 'MULTIPLY'
-                mix.inputs['Fac'].default_value = 1.0
+                mix = nodes.new(type="ShaderNodeMixRGB")
+                mix.blend_type = "MULTIPLY"
+                mix.inputs["Fac"].default_value = 1.0
                 mix.location = (-300, 250)
                 # connect base -> mix Color1, AO -> Color2
-                links.new(base_tex_node.outputs['Color'], mix.inputs['Color1'])
-                links.new(ao_tex.outputs['Color'], mix.inputs['Color2'])
-                links.new(mix.outputs['Color'], principled.inputs['Base Color'])
+                links.new(base_tex_node.outputs["Color"], mix.inputs["Color1"])
+                links.new(ao_tex.outputs["Color"], mix.inputs["Color2"])
+                links.new(mix.outputs["Color"], principled.inputs["Base Color"])
 
         # EMISSION (optional)
         if sidecars.get("emission"):
-            e_tex = _create_image_node(sidecars["emission"], "Emission", colorspace='sRGB', location=(-600, 600))
+            e_tex = _create_image_node(
+                sidecars["emission"],
+                "Emission",
+                colorspace="sRGB",
+                location=(-600, 600),
+            )
             if e_tex:
-                emit_node = nodes.new(type='ShaderNodeEmission')
+                emit_node = nodes.new(type="ShaderNodeEmission")
                 emit_node.location = (-300, 600)
-                links.new(e_tex.outputs['Color'], emit_node.inputs['Color'])
+                links.new(e_tex.outputs["Color"], emit_node.inputs["Color"])
                 # combine emission and principled via Add Shader
-                add = nodes.new(type='ShaderNodeAddShader')
+                add = nodes.new(type="ShaderNodeAddShader")
                 add.location = (200, 100)
-                links.new(principled.outputs['BSDF'], add.inputs[0])
-                links.new(emit_node.outputs['Emission'], add.inputs[1])
-                links.new(add.outputs['Shader'], output_node.inputs['Surface'])
+                links.new(principled.outputs["BSDF"], add.inputs[0])
+                links.new(emit_node.outputs["Emission"], add.inputs[1])
+                links.new(add.outputs["Shader"], output_node.inputs["Surface"])
         else:
             # standard connection
-            links.new(principled.outputs['BSDF'], output_node.inputs['Surface'])
+            links.new(principled.outputs["BSDF"], output_node.inputs["Surface"])
+
+        # **UNITY OPTIMIZATION: Set material properties for Unity export**
+        mat.use_fake_user = True  # Prevent material deletion
+        mat.blend_method = "OPAQUE"  # Unity standard blend method
+
+        # **UNITY OPTIMIZATION: Add custom properties for Unity**
+        mat["unity_export_ready"] = True
+        mat["shader_name"] = shader  # Store original shader name
 
         # done
         return mat

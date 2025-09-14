@@ -1,1180 +1,0 @@
-Contents
-
- HYPERLINK  \l "using" Using BehavEd
-	Actions
-	File
-	Application
-	TreeviewOptions
-	Compile!
-	The Feedback Window
-	ICARUS Command List
-	Editing Your Commands
- HYPERLINK  \l "flow" Flow Control Commands
-	Affect
-	Wait
-	If/else
-	Loop
-	Random
-	Signal/Waitsignal
-	Declare
-	Set
- HYPERLINK  \l "brush" Brush Manipulation Commands
-	Move
-	MoveBy
-	MoveDir
-Rotate
- HYPERLINK  \l "misc" Miscellaneous Commands
-	Print
-	Rem
-	Run
-	Sound
-	Use
-	Camera
-	Play
- HYPERLINK  \l "debug" Debug Commands
-
- HYPERLINK  \l "npc" NPC commands 
- HYPERLINK  \l "_Basic_Concepts" Basic Concepts
-HYPERLINK  \l "what"What happens after a script is done?
- HYPERLINK  \l "_TASKS" TASKS
- HYPERLINK  \l "_Move" Move
- HYPERLINK  \l "_MoveToEnt" MoveToEnt
- HYPERLINK  \l "_WALK" WALK
- HYPERLINK  \l "_RUN" RUN
- HYPERLINK  \l "_PATH" PATH
- HYPERLINK  \l "_ATTACK" ATTACK
- HYPERLINK  \l "_SET_ENEMY" SET_ENEMY
- HYPERLINK  \l "_SET_HITLOC" SET_HITLOC
- HYPERLINK  \l "basic" Other Basic Commands
- HYPERLINK  \l "_Goals" Goals
-	 HYPERLINK  \l "_HoldArea" HoldArea
-	 HYPERLINK  \l "_Surround" Surround
-	 HYPERLINK  \l "_Guard" Guard
-	 HYPERLINK  \l "_Follow" Follow
-	 HYPERLINK  \l "_Goal_Related_Set" Goal Related Set Commands
-		 HYPERLINK  \l "_SET_AREAGOAL" SET_AREAGOAL
-		 HYPERLINK  \l "_SET_AREAGOAL2" SET_AREAGOAL2
-		 HYPERLINK  \l "_SET_NAVGOAL" SET_NAVGOAL
-		 HYPERLINK  \l "_SET_GOALMODE" SET_GOALMODE
-		 HYPERLINK  \l "_SET_GOALFLUSH" SET_GOALFLUSH
-		 HYPERLINK  \l "_SET_GOALDIST" SET_GOALDIST
-	 HYPERLINK  \l "_Handling_Enemies_During" Handling Enemies During Goals
-	 HYPERLINK  \l "_Animations" Animations
-		 HYPERLINK  \l "_SET_ANIM" SET_ANIM
-		 HYPERLINK  \l "_SET_HANDSIGNAL" SET_HANDSIGNAL
-		 HYPERLINK  \l "_Common_Animations" Common Animations (setting stance, mood, �)
-	 HYPERLINK  \l "_Facing_and_Looking" Facing and Looking
-		 HYPERLINK  \l "_SET_LOOK_TARGET" SET_LOOK_TARGET	
-		 HYPERLINK  \l "_SET_LOOK_ROOT" SET_LOOK_ROOT
-		 HYPERLINK  \l "_SET_LOOK_PARENT" SET_LOOK_PARENT
-		 HYPERLINK  \l "_SET_TALK_TO" SET_TALK_TO		
-		 HYPERLINK  \l "_SET_SEARCH" SET_SEARCH
- HYPERLINK  \l "A" Apendix A : All available SET commands
-	
-
-
-
-Using BehavEd
-BehavEd is a drag and drop interface for building scripts.  On the left you�ll see the list of ICARUS commands available to you.  On the right is a column of buttons used for BehavEd functions like loading and saving your scripts, quitting, copying and pasting commands, etc.
-
-BehavEd Command Buttons
-
-Actions
-Add � Add selected command to the script window (same as double-clicking on the command)
-Delete � Delete the selected line from the script
-Edit � Edit the selected line (same as double-clicking on the line)
-Clone � Copy the selected line and paste the copy on the next line
-Copy � Copy the selected line to the buffer
-Paste � Paste the line in the buffer to the line after the currently selected line
-
-File
-New � Start a new script
-Open � Open an existing script
-Append � Append an existing script to the end of the one you�re editing.
-Save � Save your script under it�s current name
-Save As� - Name and save your script
-
-Application
-Preferences � Brings up the list of directories BehavEd should look fo certain files in.
-About� - Some information about BehavEd
-Exit � Quit BehavEd
-
-Treeview Options
-Show Types � Turns on the showing of the types of all values and strings and table entries.
-%g floats � Shows all floats with several decimal places (default shows only decimal places used)
-
-Compile! � Process your script so that it is ready to be run in the game by ICARUS.
-
-The Feedback Window
-All errors and messaged related to compiling a script will appear in the bottom white window.  If a script compiled successfully you will see a smiley face and the text �OK�.  Otherwise, it will report the error.
-
-ICARUS Command List
-You can add a command to your script (displayed in the large central window) by either dragging a command from this list to that window or double clicking on it.  If you simply highlight a command, information about it will appear just above the Feedback Window.
-
-Key:
-{} � Indicates a command that can be expanded to contain other commands.
-e � A normal command
-[] � A macro, essentially a group of commands.
-
-Commands:
-(For detailed descriptions, see each command�s individual description later in this document)
-affect	move	print
-
-
-
-
-Editing Your Commands
-
-Once you�ve added a new command to your script, you have to enter the right parameters.  This is done by either double-clicking on the command or highlighting it and hitting the �edit� button.
-You will be presented with a series of edit boxes that you can alter the values of.
-
-Some are simple edit boxes where you just type in the values you desire.  These will usually have an indication below the box of what type of data is expected, string, float, vector, etc.
-
-Some are drop-boxes where you must pick a value from a list of available ones.  These drop-downs will occasionally change what the subsequent edit boxes expect as data.  When you�ve chosen a new drop-down value, you must hit the �Re-Evaluate� button to ensure that the extra edit boxes are updated to the right number and type.
-
-Next to edit boxes you will see a �Helper� button.  By clicking on this, you can access the �get� command (see below).  Only the get fields that match the type of the expected data will be available.  If the expected data type is a float you also have the choice of using the �random� function (again, see below).  Simply type in the minimum and maximum ranges for the float value and hit the random button.  If you decide not to use any of the helper functions, hit �revert� to return to a normal edit-box.
-
-When you are done, hit �ok� or �cancel� if you don�t wish to apply the changes you made.
-
-Flow Control Commands
-(affect, wait, If/else, loop, random, signal/waitsignal, declare, set)
-
-These are the commands that control the �flow� of the script.  In other words, they affect how and when commands are executed.
-
-affect � This command is used to send a block of commands to an entity other than the one running the current script.  For example:
-
-Print( �Hello, Fred!�)
-
-Affect ( �Fred�, FLUSH )
-{
-	wait( 1000 )
-	print( �Leave me alone!� )
-}
-
-In the above example, the entity running the script will print �Hello, Fred!�, then tell Fred to wait a second and respond with �Leave me alone!�
-
-The name (�Fred�) that you specify must be the ICARUSname (not classname) of the entity you wish to affect.  ICARUSname is a key/value pair specified in radiant.  For all other entities, you must specify a name if you intend to affect them with a script at some point.
-
-The second parameter in the �affect� command decides whether you want to totally wipe out what the entity was doing before or just insert the new command into what he was doing.  The choices are:
-
-FLUSH � Just like the �flush� command, will wipe out any script commands Fred might have been waiting to process in favor of the new ones in the �affect� block.
-
-INSERT � Wherever Fred is in his script commands he is running, throw in these new commands.  So if Fred is sitting at a table and alternating between eating and looking around, this new command will make him print �Leave me alone!� and allow him to continue eating and looking around.
-
-It�s important to remember that an affect simply dumps commands onto another entity.  The script that has the affect in it will not wait for the commands inside the affect to finish.
-
-For example:
-
-Print( �Hello, Fred!�)
-
-Affect ( �Fred�, FLUSH )
-{
-	wait( 1000 )
-	print( �Leave me alone!� )
-}
-
-print( �Damn you to Hell, Fred!� )
-
-This will not wait until Fred is done talking before printing �Damn you to Hell, Fred!�.  What will happen is something like this:
-
-�Hello, Fred!�
-�Take that, Fred!�
-
-Then, a second later, Fred will say:
- �Leave me alone!�
-
-This is because �affects� complete instantly for the script the affect is in.  If you wanted the reply to Fred to wait a second after Fred spoke, this is what you would do.
-
-Print( �Hello, Fred!�)
-
-Affect ( �Fred�, FLUSH )
-{
-	wait( 1000 )
-	print( �Leave me alone!� )
-}
-
-wait( 2000 )
-print( �Take that, Fred!� )
-
-The reason you wait two seconds is because you and Fred are now running your scripts simultaneously.  You have to wait for the one second before Fred speaks and wait another second before you speak.
-
-This is a very important rule and is easy to forget.  Always remember: affects are not executed in the script you are running, they are shoved onto another entity for them to execute!
-
-Important: Do NOT use the affect command on the entity running the script.  There is a bug somewhere in the ICARUS internals that does not properly run singly-nested affect commands affecting the calling entity.  At some point, this may get fixed.  But, it�s inside the ICARUS internals somewhere and NOT in the game stuff.
-
-
-Wait is a simple command used to make a script wait a certain number of milliseconds before execution continues.  There are 1000 milliseconds in one second.
-
-For example:
-
-print( Hello� )
-wait( 1000 )
-print( World! )
-
-Will make the script print �Hello��, wait a second, then print �World!�.
-
-Random gives a random value between two numbers, so:
-
-random(0,1) 
-
-Will give a random float between 0 and 1.
-
-Declare allows you to set up a variable in ICARUS.  A variable is something that can be set and later referenced in some other part of the script.  When you declare a variable you have to let ICARUS know what type of variable it is (e.g. float).  So in the example:
-
-declare (  FLOAT, "choice" );
-
-Choice is the variable name and it can have any numbered value.  To actually assign choice some value you will use the Set command.
- 
-Set allows you to set some internal variable within ICARUS to a specified value.  Usually this is used with NPCs to set their state, animation, etc..  But you can also use it to set up variables which you declared or to set parms on brushes.  So, in the example:
-
-set ( "choice", random( 0, 2 ) );
-
-Will set the variable choice to some random number between 0 and 2.  Remember that you have to declare choice (as above) before this will work.
-
-If/else allows you to branch a script based on the value of some if-then logic test.  So, if the comparison in the if statement is true, then it will execute whatever is below it.  You can put an else after the if to execute a separate block of commands if this comparison is not true.
-So, in the example:
-
-  if ( get( FLOAT, "choice") < 1 )
-  {
-      set ( "SET_MOVE_BY", "128.0 0.0 0.0 1000.0" );
-  }
-  else (  )
-  {
-      set ( "SET_MOVE_BY", "0.0 128.0 128.0 1000.0" );
-  }
-
-We move the brush by one of two possible values based on the comparison in the first if statement.  If the variable choice is less than one, it will move by 128,0,0 for 1 second.
-Otherwise, it will move by 0,128,128 for 1 second.
-
-Signal and Waitsignal allow you to have one script signal another to continue.  So, for example- I could have some trigger or deathscript or painscript set a signal, which some other script would be waiting to receive before continuing.  However, please note that once the receiving script gets the signal that signal is cleared!  Therefore, you can�t have more than one script waiting on the same signal.  If you need something like this- send more than one signal from the sending script.
-
-Example:  Say I want to have some npcs stay right where they are until certain other npcs are dead.  We could accomplish this with a signal and waitsignal.  The npcs who are dying would have this as a death script:
-
-Chris�s death script:
-signal ( "chris dead" );
-signal ( "chris dead 2" );
-
-Matt�s death script:
-signal ( "matt dead" );
-signal ( "matt dead 2" );
-
-Marine scout�s script (the guy who�s waiting for the signal from Matt, Chris being dead):
-set (  "SET_TASK",  "Attack" );
-        set (  "SET_ENEMY", "matt" );
-        set (  "SET_STANCE",  "Crouch" );
-        rem ( "scout stays crouched until matt is dead" );
-        rem ( "signaled from col6/mattdead" );
-
-        waitsignal ( "matt dead" );
-        waitsignal ( "chris dead" );
-         set (  "SET_TASK_SPEED",  "3 - TakeYourTime" );
-        set (  "SET_ENEMY", "NULL" );
-        task ( "donekill" )
-        {
-            set (  "SET_TASK",  "Path" );
-            set (  "SET_NAVGOAL", "donekill" );
-        }
-
-        dowait ( "donekill" );
-        set (  "SET_STANCE",  "Crouch" );
-
-So, the scout is signaled from the deathscripts of Matt and Chris before he continues on his script. A similar script could be setup for another npc, this npc would have to use the signals �matt dead2� and �chris dead2�
-
-Loop allows you to repeat a sequence of actions for a specified number of times.  If you put a �1 in the number of loop times, this will loop forever.
-So, in the example:
-
-affect ( "boat01",  FLUSH )
-{
-    task ( "boat01float" )
-    {
-         play (  "PLAY_ROFF", "scripts/col8/boatfloat.rof" );
-    }
-    loop ( -1 )
-    {
-        dowait ( "boat01float" );
-    }
-}
-
-The boat is roffed over and over again.  (see below for details on PLAY_ROFF)
-
-
-
-
-
-Brush Manipulation Commands
-(move, moveDir, moveBy)
-
-These are commands that will allow you to physically move brushes with scripting.
-
-The move command will make a brush move from its current position to a second coordinate over a length of time in milliseconds, like so:
-
-move (<1000 2000 1000>, 1000 )
-
-will make the brush move from its current position to (1000, 2000, 1000) over 1 second.
-
-moveDir will move the brush from it�s current position with a specified trajectory for the specified amount of time, and in the velocity it must go to travel the specified distance so:
-
-moveDir(<0 90 10>, 50 1000) moves the brush on an angle of 0 degrees pitch, 90 roll and 10 yaw and with a velocity that is needed to travel 50 units in one second.
-
-moveBy will move the brush from it�s current position with a specified trajectory over an amount of time, so:
-
-moveBy<0 90 10>, 1000) moves the brush 90 units in the y, 10 in the z over 1 second.
-
-rotate will rotate the brush from it�s current orientation in the given pitch, yaw and roll for the given milliseconds, so:
-
-affect ( "object",  FLUSH )
-{
-
-task ( "rotate stuff" )
-{
-rotate ( < 0 90 0 >, 1000 );
-}
-
-dowait ( "rotate stuff" );
-}
-Will rotate a brush with targetname �object� to 90 degrees yaw and over 1 second.
-
-Miscellaneous Commands
-(print, rem, run, sound, use, camera, play)
-
-Print takes a string parameter and then prints it to the top of the screen.  This is intended for debugging purposes.
-
-Rem doesn�t actually control the flow of the script, it is just a comment.  You can put notes to yourself in here or a description of the action to make it easier for others to read the script, etc.  It�s generally a good practice to put a rem as the first line of your script so you can tell what the script does just by looking at the first line.
-
-Run allows one script to start running another script.  This does not affect the status of the currently running script, in other words: more than one script can be running at one time.
-So, in this example:
-affect ( "Carlos",  FLUSH )
-{
-    run ( "scripts/example/walkpatrol" );
-}
-Carlos runs the walkpatrol script.  Note that this script may or may not include instructions for Carlos.
-
-Sound allows a script to play a sound.  At the moment, only sounds which are sent to CHAN_VOICE can be dowaited.  CHAN_VOICE attenuates and is based on position.
-If you need the player to hear something, either affect the player and play the sound or play the sound on CHAN_ANNOUNCER.  So, in this example:
-task ( "pilot briefing 1" )
-    {
-        sound (  CHAN_VOICE, "sound/npc/col9/pilot/reconreports.mp3" );
-    }
-dowait ( "pilot briefing 1" );
-The sound in reconreports.mp3 will be played and nothing in this script will continue until it�s finished.
-
-Use allows you to use some entity.  For this to work you must specify the targetname. So, in the example:
-affect ( "barrel1",  FLUSH )
-{
-    use ( "barrel1_explosion1" );
-    use ( "smoke_barrel1" );
-    wait ( 200 );
-
-barrel1_explosion1 is the targetname of an effect which is used by this script, then smoke_barrel1 is used and the script waits 200 milliseconds before continuing.  You can use anything that would normally be used in the game by (e.g. by a trigger or player, or npc) but the entity in question must have a targetname.
-
-Camera allows you to control the camera.  Here are the available commands:
-ENABLE 	Puts game in camera mode 
-
-DISABLE	Takes game out of camera mode
-
-ZOOM	<zoom amount, speed> Normal zoom amount is 80, 10 is zoomed in, max is 120.  Second value is time in ms to take to zoom to the new FOV
-
-MOVE	<vector origin, speed> Move to a absolute vector origin or TAG("targetname", ORIGIN) over time over number of milliseconds
-
-PAN	<angle, direction of movement, duration> Pan to absolute angle from current angle in dir or to a TAG(�targetname�, ANGLES) (no dir will use shortest) over number of milliseconds
-
-ROLL	<angle, duration> Roll to relative angle offsets of current angle over number of milliseconds
-
-TRACK	<trackname, speed, lerp> Get on track and move at speed, last number is whether or not to lerp to the start pos
-
-FOLLOW	<cameraGroup, speed, lerpt> Follow ents with matching cameraGroup at angleSpeed, last number is whether or not to lerp to the start angle
-
-DISTANCE	<distance, lerp> Keep this distance from cameraGroup (if any), last number is whether or not to lerp to the start angle
-
-FADE	<start, opacity, end, opacity, distance> Fade from [start Red Green Blue], [Opacity] to [end Red Green Blue], [Opacity] (all fields valid ranges are 0 to 1) over [number of milliseconds]
-SHAKE		<intensity, duration> Intensity (0-16) and duration, in milliseconds
-
-PATH 		 <filename> Path to ROF file to be used for camera movement.
-
-Play
-Play a given ROF file.  For example:
-task ( "first heli rof" )
-{
-        play (  "PLAY_ROFF", "scripts/col9/heli1.ROF" );
-}
-do ( "first heli rof" );
-Will play the ROF named heli1.ROF
-
-There are two types of ROFF types: PLAY_ROFF (a normal ROF) and PLAY_ROFF_TRANSLATED.
-
-ROFF_TRANSLATED allows you to do one generic ROFF, and the entire ROFF animation will be rotated around to fit up with the current position of the entity.  So this way, if you have a generic explosion which flips a truck, the explosion will orientate itself no matter which direction the truck is facing  Note that this translation has more math involved, so if you want to do a ROFF which plays over and over again (on the same object), you may encounter math precision errors which can accumulate over time.  I.e. if you have a fancy path that ends at the same point where it starts, having it translated and played many times may result in the end position being slightly off.
-
-Debug Commands
-
-g_ICARUSDebug 4
-Is the command given to the console to display all ICARUS directives as they are parsed and pushed onto sequencers.
-
-	
-NPC Scripting with ICARUS and Lich
-
-
-ICARUS provides an interface to AI to enable designers to script everything from very basic NPC point to point movements and animation calls, to behaviors and team goals.
-This document assumes you have already read the �Nav Point System�.doc document in the documents/design folder.  
-
-Basic Concepts
-
-ICARUSname vs. Targetname
-We will often refer to ICARUSname and targetname.  An ICARUSname is needed on any entity who will be affected or run scripts. A targetname is needed generally for any entity you want to talk about it in ICARUS or use it in ICARUS but don�t necessarily want to affect.  Example of things which need targetnames are ref_tag and doors.  Anything you are to affect, for example a Colombian soldier needs an ICARUSname.
-Note that in soldier of fortune 2 �player� is the ICARUSname and targetname of the player.  
-
-Goal Scripts vs. Regular Scripts
-Another important concept to understand early on is the difference between pure AI, goal driven AI, and scripts.  The best way to demonstrate this is with an example: there are three different ways to have an NPC patrol in sof2: using just his AI, using a Goal (this might be called an �AI Script� or �Goal Script�), and using a regular script.  In the AI way of patrol, the NPC�s default behavior is to patrol- which means he will automatically pick a few navpoints near him to patrol.  In the Goal Script you (as a designer) would give him the �Guard� goal and a set of navpoints, these navpoints would be the points he chooses to patrol between.  The third way to do a patrol is with a regular script.  This last method is just like you�ve seen in the original sof: tell an NPC to move to one navpoint, then another, then another- perhaps all surrounded by a loop.  
-
-This is only one example of Goal Scripts vs. Regular Scripts.  Basically, just remember that a Goal Script is not a pure script.  The closest example of a goal script from past games would be the Star Trek EF idea of a behavior state: you give the guy some parameters and let him go.  In the above goal example, we gave him a Guard goal and some points, then from there the AI took over.  This is very different from a regular script, because in a regular script the AI is doing nothing.  So, if you are expecting the guy to respond to enemy gunfire for example- they would not (by default) handle this (unless you tell them to, see �RELEASE ON CONTACT� for more info. on this).  Also, usually a goal script will automatically have the Sergeant do hand signals and orders before executing, a regular script would not do that for you.
-
-We will first talk about the SET_TASK instruction.  Some SET_TASK command is needed pretty much anytime you want the NPC to move based on a script.  The command you choose will determine how much Lich is used to help the scripting system.
-
-What Happens After a Script?
-In general, after a script is finished the NPC will go back to his AI.  However, there are several exceptions to this and things to watch out for:
-Goals are persistent and stay around until you give another goal or do a GOAL_FLUSH (see below for details)
-If you set up some field on an NPC (e.g. ENEMY, STANCE, �) and did not flush it before the end of the script, this field is still set on the NPC when he exists the script.  If at some point you want to clear it, you will have to use the appropriate command (e.g SET_ENEMY NULL, see below for details).  
-
-
-TASKS
-Move
-Instantly moves NPC to a specific x,y,z on the map
-Requirements:
-	After SET_TASK Move do a SET_VECGOAL with the given world coordinate.
-Example:
-set ( "SET_TASK", "MOVE" );
-set ( "SET_VECGOAL", "50.0 1000.0 70.0" );
-MoveToEnt
-Lerps to a specific entity location.
-Requirements:
-	After SET_TASK Move do a SET_ENTGOAL with the given targetname.
-Example:
-set ( "SET_TASK", "MoveToEnt" );
-set ( "SET_ENTGOAL", "reftag1" );
-WALK
-Walks to specific NavPoint on the map.  (you don�t have to specify animations, Lich picks them for you based on velocity, etc..).  If you do not want to use the default walk speed (3 out of a scale of 1 to 10) you may use SET_TASK_SPEED to change the speed of the walk and the corresponding animation to go with this speed (see SET_TASK_SPEED for more information).
-NOTE: Walk does NOT use the nav system, line of sight is required for this command.
-Requirements:
-After SET_TASK Walk do a SET_NAVGOAL with the given name of the Navpoint (set with namenp in the game).
-Example:
-set ( "SET_TASK", "Walk" );
-set ( "SET_NAVGOAL", "navpoint1" );
-
-RUN
-Run to specific NavPoint on the map.  (you don�t have to specify animations, Lich picks them for you based on velocity, etc..) If you do not want to use the default run speed (7 out of a scale of 1 to 10) you may use SET_TASK_SPEED to change the speed of the run and the corresponding animation to go with this speed (see SET_TASK_SPEED for more information). 
-NOTE: Run does NOT use the nav system, line of sight is required for this command.
-	Requirements:
-After SET_TASK Run do a SET_NAVGOAL with the given name of the Navpoint (set with namenp in the game).
-Example:
-set ( "SET_TASK", "Run" );
-set ( "SET_NAVGOAL", "navpoint1" );
-
-PATH
-Plans a path to specific NavPoint on the map.  (you don�t have to specify animations, Lich picks them for you based on velocity, etc..).  This command 
-will automatically generate the quickest route between the NPC�s current location and the navpoint.  In otherwords, you could specify this when the NPC is on one side of the map and the navpoint is in a completely different area, and the NPC will walk there automatically.
-NOTE: PATH is the only NPC command that uses the nav system to get around objects.  You can use this command to tell the NPC to get from any navpoint in the map to any other navpoint in the map as long as at least one path exists.
-Requirements:
-After SET_TASK Path do a SET_NAVGOAL with the given name of the Navpoint (set with namenp in the game).
-You MUST have sufficient navpoints set for this to work properly.   In other words, if you want him to walk to navpoint1, there better be a way for him to get from his current position to navpoint1 using the navpoint connections.
-Example:
-set ( "SET_TASK", "Path" );
-set ( "SET_NAVGOAL", "navpoint1" );
-ATTACK
-Shoots NPC�s gun and plays default shooting animation for the gun that NPC is holding. 
-Requirements:
-NPC must be near an enemy.  By default, any other NPC (or the player) who is not on the same team is treated as an enemy.  And, executing this command on it�s own will attempt to attack the closest enemy.  If you wish to set an enemy manually, you may do so with SET_ENEMY (see below).
-Example:	
-set ( "SET_TASK", "Attack" );
-	Or:
-set ( "SET_ATTACK", "ON" );
-The SET_TASK attack and SET_ATTACK ON do the exact same thing, so you can use either one.  If you want to stop the NPC from shooting, you must do a SET_ATTACK OFF.
-set ( "SET_ATTACK", "OFF" );
-
-Task Related Set Commands
-
-SET_ENEMY
-Give the ICARUSname of an enemy.  This is used in conjunction with the SET_TASK Attack command to have an NPC fire at a specific �player�, NPC, or anything else.  (Note: you can use this for anything that can have an ICARUSname: brushes, reftags, etc�)  By their nature, NPCs are part of a team: so Marines are enemies of Colombians and vice versa- you do not have to set enemy for these basic relationships.
-Example:
-In the above FOCUS task we saw that you have no control over which enemy you focus on, you just focus on the closest one.  With SET_ENEMY you can specify an exact enemy to focus on by doing the following:
-set ( "SET_ENEMY", "Carl" );
-dowait ( "enemy" );
-task ( " focus on carl " )
-{
-set ( "SET_TASK", "Focus" );
-}
-dowait(�focus on carl�)
-task ( "flip off" )
-{
-set (  "SET_HAND_SIGNAL",  "Point" );
-}
-dowait(�flip off�)
-So as you can see: once you have enemy set you can focus on him or you could also simply attack Carl in a similar manner:
-set ( "SET_ENEMY", "Carl" );
-dowait ( "enemy" );
-set(�SET_TASK�, �Attack�);
-Note that I do not need to set focus because the Attack will do this for me (it�s pretty hard to attack someone if your back is turned to them).
-SET_HITLOC
-	Say you want to have one NPC shoot a specific location on another NPC,
-You can do that with SET_HITLOC.  Just make sure to set this command before you do a SET_TASK ATTACK. Example:
-    task ( "attack" )
-    {
-        set (  "SET_ENEMY", "carlos" );
-        set (  "SET_HITLOC",  "Left Arm" );
-        set (  "SET_TASK",  "Attack" );
-    }
-    dowait(�attack�)
-Having it in a task means that once the attack is complete you can clear the hit location.  This way, with dowait- the designer can have a subsequent command that does a SET_HITLOC NULL. For example:
-		set(�SET_HITLOC�, �NULL�);
-SET_NAVGOAL,
-SET_ENTGOAL,
-SET_VECGOAL
-These are all ways to specify a point to go to for a SET_TASK Path, Walk or Run.  Navgoal takes the name of a navpoint, entgoal takes the ICARUSname of an entity, vecgoal takes a point in the world.
-SET_TASK_SPEED
-This lets you set the speed at which an NPC will execute a task.  By default, walk is set at speed 3 (TakeYourTime), run is set at 7 (HurryUp), and Path is set at 5 (NoRush).  However, you can override any of these by doing a SET_TASK_SPEED at any point in the script before the task executes.
-Example:
-task ( "Go to point1" )
-{
-set (  "SET_TASK_SPEED",  "7 - HurryUp" );
-set (  "SET_TASK",  "Path" );
-set (  "SET_NAVGOAL", "nav1" );
-}
-dowait ( "Go to point1" );
-
-
-SET_VIEWDIST
-	Controls the distance at which an NPC can see things.
-SET_RELEASE_ON_CONTACT
-With this set, an NPC will release from his script and go to his normal AI combat states on seeing an enemy.  Note that if at some point you want the NPC to go BACK to scripting, you will have to trigger this somehow and there is no guarantee that his old script will still be around.  The safe bet in this case would be to issue a flush command when you do your affect, and start over.  The most common thing I can think you�d want to do is script a guy to go to a specific point, then let him do his Lich based fire fighting with some enemies, then after they are dead have him walk to another point.  To do this you would want a RELEASE_ON_CONTACT in the first script.  Then use signals and waitsignals (the signals sent in the death scripts of the enemy NPCs) to trigger the new script.  Or using trigger counters, and make sure to use the trigger counter in each enemy deathscript, and trigger the new script based off of that.
-
-Note that it doesn't matter where in the script �release on contact is set�.  But if it is set when the npc sees either a �natural enemy� (e.g. a marine is natural enemy of a Colombian) of an enemy set with SET_ENEMY he will break out of the script.  By default it the SET_RELEASE_ON_CONTACT is set to off, so an npc will only break out of a script when he runs out of commands.  The RELEASE_ON_CONTACT field stays set on the enemy until you set it back to off.
- 
-Note that goals (as opposed to tasks like RUN, WALK and PATH) should by default fight the enemies along the way and move on, you won�t have to do RELEASE_ON_CONTACT if you�re using a goal.
-
-Other Basic Commands
-SET_INGORE_PAIN
-	Will completely ignore pain- won�t even play the animations.
-SET_INVINCIBLE
-	Will not die, but will play pain animations
-SET_STATIONARY
-Tells the NPC not to move (unless you script him to).  This, in conjunction with SET_TASK attack can be put into a script to make any NPC �just stand there and shoot�.  Of course, you can then remove the SET_STATIONARY by setting if off.  For example because of some trigger, perhaps the NPC is supposed to start moving again- in this case you would then SET_STATIONARY OFF and let the NPC go about his business in the rest of the script (or go back to AI).
-
-Example:  (stand there and shoot)
-set (  "SET_STATIONARY",  "ON" );
-set (  "SET_TASK",  "Attack" );
-
-Say you want a guy to stand around until triggered.  You would set his spawn script up like this:
-set (  "SET_STATIONARY",  "ON" );
-
-Then in the script which is triggered you would do this to turn off stationary 
-set (  "SET_STATIONARY",  "OFF" );
-
-From that point on you can script as normal.  For an example, lets say you want the NPC to walk to a navpoint named rallyPoint but you want sure the NPC breaks out of the script and does AI if he sees the player.  You would put this in the script which is triggered to �wake up� the NPC:
-set (  "SET_STATIONARY",  "OFF" );
-set (  "SET_ENEMY",  "player" );
-set (  "SET_RELEASE_ON_CONTACT",  "ON" );
-task(�Go To RallyPoint�)
-{
-	set( �TASK�, �Path�)
-	set ( "SET_NAVGOAL", "RallyPoint" );
-}
-dowait(�Go To RallyPoint�);
-
-If I had NOT done a SET_ENEMY here the NPC would have broken out of his script when he saw ANY enemies.  So for example, if I was scripting a Colombian and he saw a Marine and he did not SET_ENEMY as above, then he would attack.  The above example will only break out of the script on seeing the player.  (And then it will go into default AI which will do the combat for you).  Also note that I have set the npc to go to a navpoint named �RallyPoint�.  Normally he will only �finish� this script once he has gotten to that navpoint, but since SET_RELEASE_ON_CONTACT is set to ON, he will break out of the script and go to normal AI at any point he sees the player.
-
-SET_NAVIGATION
-This can also be set as a spawn field.  Turning this off effectively disallows an NPC from using the navpoint system, but is good for snipers or people who will never move.  If you DO want them to move later in life, you can turn navigation back on- and this will again allow him to use the navpoint system.   USE WITH CAUTION!
-Example:
-	set (  "SET_NAVIGATION�,  "OFF" );
-
-
-
-SET_HEALTH
-Set�s an NPC�s health to the given value.  Doing a SET_ANIM_PAIN and choosing a hit location will allow you to simulate an NPC taking pain.  Example:
-set (  "SET_ANIM_PAIN",  "Chest" );
-set (  "SET_HEALTH", -1 );
-Setting health to �1 will effectively kill the NPC.
-SET_MOVE
-	Move to coordinate x,y,z over time t.
-SET_MOVE_BY
-	Moves in direction x,y,z for for time t (at current velocity).
-SET_MOVE_DIR
-	Moves in direction x,y,z for for time t, and distance d.
-SET_ORIGIN
-	Instantly teleports an NPC to the given x,y,z. 
-SET_ANGLE
-You can use this to change an NPC�s model orientation.  Note: this is a LAST resort.  The best way to change facing is using SET_LOOK_POINT, SET_LOOK_TARGET, or also by doing a SET_ENEMY followed by a SET_FOCUS.
-SET_DEATH_SCRIPT
-You can set this in a script (through an affect on an NPC) or on the spawn field in the Editor.  It will run the given script when the NPC dies.
-SET_PAIN_SCRIPT
-You can set this in a script (through an affect on an NPC) or on the spawn field in the Editor.  It will run the given script when the NPC gets pain.
-SET_SPAWN_SCRIPT
-You can set this in a script (through an affect on an NPC) or on the spawn field in the Editor.  It will run the given script when the NPC is spawned in.
-SET_USE_SCRIPT
-You can set this in a script (through an affect on an NPC) or on the spawn field in the Editor.  It will run the given script when the NPC is used.
-SET_KO_SCRIPT
-	The script ot use when an NPC is knocked out.
-SET_PLAYER_USE_SCRIPT
-	The script to run when a player presses use on this NPC.
-SET_TEAM
-	Changes the NPCs team.
-
-
-
-Goals
-
-Goals are primarily for team based behavior.  Also, goals are more robust than tasks: they are better at handling breaking out of the script to handle enemy fire.  For example, if I script a fire team to Guard- they will guard until an enemy comes by, and continue to guard after they have killed him.  Goals aren�t really scripts, they are ways of telling an AI when he should prefer to be doing.
-
-Before we discuss goals we should talk about the chain of command for team based AI.
-A chain of command consists of a sergeant (the leader), and several fire teams beneath him, including: a strike fire team, a support fire team, a back up fire team and a recon fire team.  Fire teams consist of two people: it�s a buddy system and is used for the leapfrog tactics.
-
-When you place a sergeant in your map any other soldiers and scouts are assigned under his chain of command.  The squad is assigned based on proximity.  So, for example- say you have two groups of marines, each made up of a sergeant, 4 soldiers and 2 scouts), one group is in a building in the middle of the map, the other is deep in the jungle.  The group in the building will automatically become a squad with the sergeant as the leader, and the group in the jungle will be a separate squad.  The scouts in the building will be assigned to the recon fire team, just as the scouts in the jungle will be assigned to the recon fire team of the jungle squad.  The other soldiers will be paired up into fire teams based on whom they are closest to.  It is OK if a soldier doesn�t have a partner (in the case of only 3 soldiers place on a map), the AI can handle this case.
-
-Understanding this chain of command is an important part of understanding how goals work.
-
-Squad level goals (these must be given to the sergeant!)
-
-HoldArea
-HoldArea tells a team to go to an area and hold it.  (For more on areas, see the LICH navpoints document.)  If they are not within 100 units of the areapoint center, they will advance to this area using their leapfrog formation.
-You can set the above �100 units� manually with a SET_GOALDIST.  So, for example- if you do a hold area and set goal distance to 200, your team will stop within 200 units of the areapoint center.  Use SET_AREAGOAL for the area that the team is to hold.  An AREAGOAL is the name of the areapoint, and as of this version of the document- it MUST be within the radius of some existing navpoint.
-The GOALMODE is described below in detail.  Briefly here, a GOALMODE of �Rambo� tells the team not to send out a recon team to investigate, but to instead proceed immediately to the area.  NOTE: you must affect the sergeant when giving squad level goals.
-
-HoldArea works by sending a goal to each fireteam, which essentially tells that group of two soldiers to move up to an area using leapfrog.  Once they reach this area, they will position themselves around the AREAGOAL and shoot at anything that is an enemy.  This goal is used in all the Colombia team maps.
-
-Example (from col6):
-
-task ( "start01" )
-    {
-        set (  "SET_GOAL",  "HoldArea" );
-        set (  "SET_AREAGOAL", "start01" );
-        set (  "SET_GOALDIST",  "200" );
-    }
-dowait ( "start01" );
-
-Surround
-Surround is another squad level goal, which when given to the commander will instruct all his subordinates to surround a specific enemy.  You must use SET_ENTGOAL to specify the ICARUSname of the Entity to surround.  This is used by the enemy troops on demolition after the first explosion.
-
-FireTeam level Goals (these can be given to any NPC)
-
-Guard	
-Guard is a useful goal, it tells the NPC in question to patrol an area.  Here is an example from Kam1:
-	    task ( "e_guy_patrol1" )
-    {
-        set (  "SET_GOAL",  "Guard" );
-        set (  "SET_NAVGOAL", "end_patrol_a" );
-        set (  "SET_NAVGOAL2", "end_patrol_b" );
-    }
-    dowait ( "e_guy_patrol1" );
-You can set up to three NAVGOAL�s.  Setting NAVGOAL, NAVGOAL2, and NAVGOAL3 is only needed for the Guard goal.  Another way to do a simulated guard would be like this:
-	    task ( "e_guy_patrol1" )
-    {
-        set (  "SET_TASK",  "WALK" );
-        set (  "SET_NAVGOAL", "end_patrol_a" );
-    }
-    dowait ( "e_guy_patrol1" );
-	    task ( "e_guy_patrol2" )
-    {
-        set (  "SET_TASK",  "WALK" );
-        set (  "SET_NAVGOAL", "end_patrol_b" );
-    }
-    dowait(�e_guy_patrol2�)
-Notice that here I only use a set task of WALK and a SET_NAVGOAL, first for navpoint end_patrol_a then for point end_patrol_b.     
-
-The difference between the first method (one guard GOAL) and the second method (two separate walk TASKs) is that the guard goal will automatically break out of a script when an enemy comes into view, and allow the guard to take care of the threat.  Also, the first method is persistant.  Once he completes one pass, he will start up again, so he will visit navpoint a, then navpoint b, then navpoint a, then navpoint b, always making a circuit until told to stop (with a GOAL_FLUSH) or he sees an enemy.  In the second method you would have to loop these tasks and also do a SET_RELEASE_ON_CONTACT to accomplish similar behaviors.
-Follow
-	Follow instructs an NPC to follow another NPC (or the player).  For example:
-   task ( "e_guy_follow1" )
-    {
-        set (  "SET_GOAL",  "Follow" );
-        set (  "SET_ENTGOAL", "player" );
-      	 }
-This is the same goal as Huang in HK and the marine in the RMG demolition map use.
-Stand
-This is the preferred way to make an NPC stay in one spot until he notices something.  He will stay in the same general area (but looks around) until he sees: a body, blood stain, footprint, or an enemy.  If he hears gunfire or loud footsteps he will investigate.  You don�t even need a script to do this command, since it is so common there is a spawnfield called �standgoal� set this to True and the NPC in question will have a standgoal when he spawns.
-
-
-
-
-Goal Related Set Commands
-
-SET_AREAGOAL
-Needed for Recon and HoldArea goals, this is an areapoint.  Note: currently the areapoint MUST be within a navpoint radius.  Soon to be fixed�
-SET_AREAGOAL2
-Needed for the flank goal mode of HoldArea, this is for the point which to send � of the team while the other half proceeds to the AREAGOAL.  In the end, they will all meet up at AREAGOAL. 
-Example:
-task ( "flank" )
-    {
-        set (  "SET_GOAL",  "HoldArea" );
-        set (  "SET_AREAGOAL", "rallypoint" );
-        set (  "SET_AREAGOAL2", "flankpoint" );
-        set (  "SET_GOALMODE",  "Flank" );
-    }
-dowait ( "flank" );
-
-
-SET_NAVGOAL
-SET_NAVGOAL2
-SET_NAVGOAL3
-These are used in the Guard goal for the points at which your NPC will patrol between.
-SET_GOALMODE (UNSOPPORTED)
-This is used for Hold Area.  It determines how the NPCs will proceed to the area: Stealth, Rambo, or Flank.  Stealth tells all the team members to proceed in stealth stance and also sends the recon team (1 or more scouts) ahead of everyone else.   Rambo sends the whole team to the spot.  Flank is used in conjunction with AREAGOAL2 to split off the team in two branches and have them meet up at the final AREAGOAL.  The Strike fire team will be sent to the AREAGOAL and the Support will be sent to the AREAGOAL2.  Once the Support fire team reaches AREAGOAL2 they will proceed to AREAGOAL and meet up with the Strike fire team there.  This was used briefly, but abandoned for another approach.  If you try it, proceed with caution.
-SET_GOALFLUSH
-This is used to turn off the goal system.  For example, if you�re waiting on a signal from somewhere telling you to have a new goal or a new task, then do a SET_GOALFLUSH to clear the current goal(s).
-SET_GOALDIST
-This is used to set the distance at which a sergeant decides his team is close enough to the provided goal.  By default, this distance is 100 units.  This command lets you override it:
-task ( "hold" )
-{
-        set (  "SET_GOAL",  "HoldArea" );
-        set (  "SET_AREAGOAL", "Town Square" );
-        set (  "SET_GOALDIST", 500 );
-}	
-	
-
-Handling Enemies During Goals
-SET_GOAL_RELEASE 
-When a squad is given a goal, and somewhere along the way one of the fire teams finds an enemy there are basically three ways to handle the situation in ICARUS:
-Go
-In this solution, the squad will continue regardless of the enemy.  The squad will shoot at the threat as it moves, however the men will not revert to normal AI behavior when they see the threat.  An example of the usage might be for men crossing a road when the priority is to get across the road as quickly as possible.
-Use hold area on the point on the other side of the road, and let them leap frog across it.  If at some point an enemy walks along, they will shoot at him but not stop the immediate task of crossing the road. Setting for this mode involves doing a SET_GOAL_RELEASE  on the sergeant to Go.  (This tells him not to care about anything as he goes about the goal). Example:
-	  set (  "SET_GOAL_RELEASE",  "GO" );
-  task ( "hold" )
-   {
-        set (  "SET_GOAL",  "HoldArea" );
-        set (  "SET_AREAGOAL", "Town Square" );
-    	   }
-Pause
-In this solution, the squad will pause for 10 seconds.  While they are �pausing� they will be in their normal AI behavior of getting to cover and shooting at the enemies.  The default 10 seconds is changeable with SET_GOAL_PAUSE.  An example of the usage here might be to simulate a squad responding to a couple enemies in a building.  They might pause for a moment to take them on, before moving on. This is the default GOAL_RELEASE for ALL team goals.
-
-Setting the pause hold area (or any other goal) involves making sure you have GOAL_RELEASE set to PAUSE on the sergeant.  
-Stop
-In this solution, the squad will stop when it sees an enemy.  This means that if any member of the team spots an enemy all the squad will respond by going into normal AI combat behavior (taking cover, etc�)  Once the enemies are vanquished, the squad will continue.  For stop to work, you must set GOAL_RELEASE on the sarge to STOP.
-Animations
-You can either use the SET_ANIM command or use the appropriate stance/mood commands to set an animation.  If a stance, mood, or handsignal exists for the animation you wish to script, it is always the preferred method.  However, if it�s a custom animation you will have to provie the following information in the SET_ANIM:
-Skel : Skelement to play animation on
-Prim: Primitive this animation is within.   This is a hierarchy of similar animations For example: Attack, Damage, HMOVE, Inventory
-Health: Health of NPC: Full, Medium, Low, Dead
-Item : Item holding
-Mood: Happy, Bored
-Stance : Crouching, standing,�
-Name of Animation : (e.g. Fire M4)
- HYPERLINK  \l "force" Read this important note before script animations
-
-SET_ANIM
-It is easy to get these parameters using SklView.  Open up the average_sleves skeleton in skelview and traverse the available animations, in the grey box below the animation will be the full path take this string and copy it int the SET_ANIM field in ICARUS.
-	Example (from col6):
-	affect ( "pilot",  FLUSH )
-{
-    set (  "SET_ANIM_SEQUENCER",  "OFF;
-    set (  "SET_ANIM", "Body|Interaction|Full+None+Bored+Stand|Heli Piloting" );
-}
-Remember that SOF2 has a hierarchical animation system.  Thus, if you set a body animation, that will effect the entire skeleton (since the body skelement is the root of the entire skeleton).  However, once you�ve set the body animation you could(for example) go back and set a head animation.  Just remember that anytime you set a higher level animation such as body, it will override anything currently playing on the rest of the skelements.
-SET_ANIM_SEQUENCER
-This turns the animation sequencer on or off.  The important thing to remember is that any time you have the animation sequencer off you need to set up ALL the animations you want played for any given situation.  When you turn the sequencer back on, you can stop setting the animations manually.  
-
-
-Turning Animations off
-If you want to play an animation once only you can put it in a task, do the task and then set the animation sequencer back on, or override it with a new animation.  If you want to turn off an anim, use the SET_ANIM_OFF command.  For example:
-SET_ANIM_OFF BODY 
-Will turn off the currently playing animation on the body.
-
-Common Animations
-For convenience we�ve included several commonly done animations within the animation sequencer.  This is always the preferred way to set an animation.  For example, if all you want is to crouch (and not some special crouch) then use SET_STANCE crouch.
-
-SET_STANCE:
-Specify crouch or stand here to have your NPC crouch or stand.  Although you could do this as described above, this macro is the preferred way to crouch an NPC.
-SET_MOOD
-Specify stealth or bored to control the stance of an NPC.  This is the preferred way to change the stance an NPC.
-SET_HANDSIGNAL
-Specify the hand signal you want an NPC to play.  This is the preferred way to play hand signals.
-SET_ANIM_PAIN  
-Used for SET_HEALTH to override which pain animation is called and simulate a pain event.
-
-Facing and Looking
-*Important note on facing, looking and animations:
-If you intend to fully control an NPC with animation and/or looking commands you will probably want to use SET_FORCE_SCRIPT ON for the duration of your fully controlled script.  This completely turns off all AI functions.  Without it, it�s sometimes possible for the AI to stomp joint commands or animations.  But note this will also wipe out all default AI behavior (which is sometimes undesirable) so you will need to turn force script off after the script.
-
-SET_LOOK_TARGET
-Give the ICARUSname of an entity to this command and the NPC will turn to face that entity. Note that the eyes have 40 degrees of freedom, so if the NPC does not have to rotate his torso, but instead can focus his eyes on the target, he will do so.  Example:
-    	set (  "SET_LOOK_TARGET", "look2" );
-Set Look Point or look target to NULL to stop looking.  Example:
-    	set (  "SET_LOOK_TARGET", "NULL" );
-SET_LOOK_POINT
-Same as above, but looks at a point in the world.  Set Look Point or look target to NULL to stop looking.
-SET_LOOK_ANGLE
-	Same as above, but will looks at the relative angle provided in the command.
-SET_LOOK_PARENT
-Turn this on or off depending on if you want the parent of the given joint to activate once the NPC has maxed out his join constraints.
-SET_LOOK_ROOT
-Turn this on or off depending on if you want the root of the model to turn during the look.
-SET_TALK_TO
-This is a special look command that will activate all appropriate joints and look commands to simulate an NPC talking to another NPC.  Provide the targetname to the TALK_TO.   You do NOT need to specify LOOK_ROOT, LOOK_PARENT or any of the other settings required for a LOOK_TARGET, the TALK_TO is all you need for this case:
-  	 set (  "SET_TALK_TO�, �Chris� );
-
-SET_SEARCH
-Set search is a way to automatically have the NPC look from side to side.  We provide you with parameters to control the range of looking.  Example (from col9):
-  	 set (  "SET_SEARCH", < 35 45 0 > );
-	 wait ( 5000 );
-This tells the NPC to search at a max of 35 degrees up and down, 45 degrees side to side and with a minimum of 0 degrees.
-SET_SEARCH_OFF
-	Turns off searching.
-
-Appendix A : SET COMMAND Listings
-
-	SET_PARM1 				Set entity parm1
-	SET_PARM2				Set entity parm2
-	SET_DISCONNECT			send disconnect
-	SET_MAINMENU,			go to main menu
-	SET_CONSOLE_COMMAND		Issue this command to the console
-SET_CVAR	Change this CVAR_NAME to the following VALUE
-	SET_STRING_PACKAGE		Name of the string package for tokens
-	SET_PRINT_TOKEN			Name of token to print out as subtitle
-SET_MUSIC_PERCENTAGE	Set the music to be this percetage of what it currently is (e.g. .5 will turn it down 1/2 of current volume)
-	SET_HUD_MAIN			name of Hud to set 
-	SET_HUD_WEAPONS			display weapon hud 
-SET_PLAYERHEALTH_OLD	call this if you want to set the player health to g_playerHealthOld
-SET_PLAYERARMOR_OLD	call this if you want to set the player armor to g_playerArmorOld
-SET_SAVE_PLAYERHEALTH	call this if you want to save the player health to g_playerHealthOld
-SET_SAVE_PLAYERARMOR,	call this if you want to savethe player armor to g_playerArmorOld
-
-SET_WORLD_DEATH_PAUSE	call this to freeze the world, intended for death scripts (ideal after fading out)
-
-
-SET_SPAWNSCRIPT	Script to run when spawned. For any SET_XXXSCRIPT you can set to NULL to clear the set script.	
-SET_USE_SCRIPT	Script to run when used inside game (not by player)		
-	SET_PLAYER_USE_SCRIPT		Script to run when player uses		
-	SET_DEATH_SCRIPT			Script to run when dead
-	SET_PAIN_SCRIPT			Script to run when in pain
-	SET_SPAWN_SCRIPT			Script to run when spawned	
-	SET_VIEW_SCRIPT			Script to run when NPC sees enemy	
-SET_ANY_VIEW_SCRIPT	Script to run when NPC sees any NPC or player
-	SET_PLAYER_VIEW_SCRIPT		Script to run when NPC sees player
-SET_HEAR_SCRIPT	Script to run when NPC hears any enemy or player
-	SET_KO_SCRIPT			Script to run when NPC is knocked out
-SET_CONTACT_SCRIPT	Script to run when NPC sees enemy, hears enemy or has evidence of an enemy�s presence.
-SET_WORLD_HEAR_SCRIPT	Script to run first time player sound is above 0.7 on the PADD
-SET_PLAYER_CAM_DEATH,	Turn on/off the player death camera (roff for dropping player to ground)(defaults ON)
-
-	SET_NAME				Set/change npc targetname
-SET_CAMERA_GROUP	Set/change your cameraGroup for camera FOLLOW commands
-SET_FACE_TARGET	Set/change your face target (NOT supported for npc's)
-	SET_ENEMY				Set/change your enemy
-SET_HITLOC	Set/change your hit location (for shooting other NPC's and players)
-SET_FAKEGUN	Set/change targetname of fake gun (for using SET_HEALTH to kill NPCs)
-	SET_PLAYER_VIEW			Attach camera to brush model child (on/off)
-SET_VIEW_PARENT	Set targetname of brush model for SET_PLAYER_VIEW command
-SET_VIEW_CHILD	Set targetname of brush model child for SET_PLAYER_VIEW command
-	SET_INVIEW_WPN			Toggle inview weapon model (on/off)
-	SET_ADD_WPN				Add a weapon to the player's inventory
-SET_REMOVE_WPN	Remove a weapon from the player's inventory
-
-	SET_NOCLIP				Turn noclip on/off
-	SET_IGNOREPAIN			NPC will ignore being in pain
-	SET_SOUNDBLOCK			NPC will not play any sounds
-	SET_INVINCIBLE			NPC will ignore being in pain
-	SET_STATIONARY			Turn npc stationary mode on or off
-	SET_FORCE_SCRIPT			Turn force script mode on(1) or off(0)
-	SET_HIDE				Turn npc hide mode on or off
-SET_ENABLE	Enable/disable affected device (not for NPCs!!!)	
-SET_EMPLACED	Force this entity onto emplaced weapon with targetname, NULL turns off
-SET_RELEASE_ONCONTACT	NPC will be released from script when he sees or is shot by some enemy
-SET_GOAL_RELEASE	GO: ignore enemies when in goal, PAUSE: default combat AI for a little while, STOP: default combat AI until enemies gone, default is PAUSE, set pause time with
-SET_GOAL_PAUSE	NPCs will stop for this many ms and fight bad guys
-	SET_NAVIGATION			Turn navpoint usage on(1) or off(0)
-SET_TASK_FLUSH			Set to ON to flush all pending script tasks
-SET_ROFF_TRANSLATED	Set to ON and when the camera is roffed it will play it translated
-SET_PLAYERALWAYS_HURT	Turn ON ability for player to always hurt this npc, regardless of invicible setting
-SET_SUIT	Turn on/off the biohazard suit fullscreen effect	
-
-	SET_MORELIGHT			Turn ON to give this npc a minlight effect
-
-	SET_ORIGIN				Set origin explicitly or with TAG
-	SET_ANGLES				Set angles explicitly or with TAG
-	SET_MOVE_BY				Move by vector x,y,z for time t
-SET_MOVE	Move in direction x,y,z for d distance and t time
-
-	SET_WAIT				Change an entity's wait field
-	SET_VIEWDIST				Change an NPC's viewing distance
-SET_GOALDIST	Change a acceptable goal reached distance (set on commanders)	
-	SET_RESET_ALL_VIEWDIST		Set all NPC's view distances to this value
-	SET_ACCURACY			Accuracy of NPC
-	SET_DAMAGE				Damage of NPC
-
-	SET_HEALTH				Change health
-SET_HEALTHNOANIM	Change health but don't play animation for it
-SET_SAVEHEALTH	Saves the health out to prepare for level load, cvar name: health_icarusname
-SET_LOADHEALTH	Loads the health from a previous level, cvar name: health_icarusname
-SET_MAXSHOTS	Shots the entity can take before starting to ignore pain, use -1 to not use maxshots
-		
-
-SET_ANIM_SEQUENCER		Turns Animation Sequencer on/off
-
-SET_ANIM	Plays an animation this many times (use string provided from SklView)
-
-SET_ANIM_PAIN	 When killing/hurting a guy in a script, you can set his death/pain animation here
-	
-SET_ANIM_OFF	Turn animations on this skel off (back to default)
-
-
-SET_ANIM_FLUSH	Flush all animations (returns all to stationary)
-
-	SET_ANIM_LOOP			Loop currently cached animation
-SET_ANIM_EYES	Set to OFF to stop blinking (use only in special cases- see Ben)
-
-SET_MOOD	Changing mood changes the default animations of the NPC.  E.G. soldier mood vs. stealth mood.
-SET_STANCE	Have an NPC sit, stand, crouch.  This combined with mood afraid gives unique afraid animations.
-
-	SET_HAND_SIGNAL			Play a hand signal once
-
-	SET_TASK				Set/change your current task
-
-SET_GOAL	Set/change your team goal (for TeamCommander NPCs)	
-
-SET_GOALFLUSH	Set to on(1) to flush goals.  Set to off(0) to again accept goals.	
-
-	SET_NAVGOAL				Set/change your navgoal
-
-SET_NAVGOAL2	Set/change your 2nd navgoal (mostly for designer assisted Patrols)
-	
-SET_NAVGOAL3	Set/change your 3rd navgoal (mostly for designer assisted Patrols)
-
-	SET_AREAGOAL			Set/change your area goal
-
-SET_AREAGOAL2	Set/change your secondary area goal (mostly for flank area goal)
-
-SET_VECGOAL	Set an arbitrary point on the map (x,y,z) to go to.
-
-	SET_ENTGOAL				Set to go to an entity the map.	
-
-SET_ENTGOAL2	Backup ent goal, good for elevators and small places.
-	
-	SET_ENTGOAL3			Backup ent goal
-
-	SET_ENTGOAL4			Backup ent goal
-
-SET_INVENTORY_ACTION	Set the type of action to do on the inventory task
-
-SET_TASK_SPEED			Set the speed to use in a specified SET_TASK (e.g. walk)
-
-SET_TASK_PAUSE	 Set the pause time between navpoints
-
-SET_ATTACK	Set to on(1) to attack (same as SET_TASK ATTACK), off(0) to stop attacking
-
-	SET_TEAM				Set this NPC or Player to the given team.
-
-SET_BLOCK_RETRY	Set the number of blocks needed before a replan on MoveToEnt- 0 for never replan
-
-SET_LOOK_TARGET	Set/change your current look target (look at this entity)
-
-SET_LOOK_POINT	Set/change your current look target to be this point in space
-
-SET_LOOK_ANGLE	Set/change your current look target by this degree (e.g. look over 10 degrees)
-SET_LOOK_TYPE	Use this to set the type of looktarget, lookpoint or lookangle you want.
-
-SET_LOOK_OFF	Use this to turn off a looking command for the given type	
-
-SET_LOOK_PARENT	Turn on/off parent activation of joint commands (once set, this stays on entity until set again. Default is ON)
-
-SET_LOOK_ROOT	Turn on/off root activation of joint commands (once set, this stays on entity until set again. Default is ON)
-
-	SET_AIM				Aim Gun at Current Focus
-
-	SET_SEARCH				Set/change your search angles
-
-	SET_SEARCH_OFF	
-SET_TALK_TO	Set/change your current talking to target (turn towards this entity to talk to it)
-
-	
-SET_SCOTT_MCNUTT	Switch Scott McNutt Off or On (use with caution).   Actually, this has a vial appear in a man�s hand and then he throws it on the floor in anger.
-
-SET_SPECIAL_USE	Set to targetname to use (must be inside Affect of some NPC)
-
-SET_VIOLENCE_USE	Set to targetname to use (this is a use that will only happen if the violence lock is not on)
-
-SET_CAMERA_NOHUD	Set to true to not allow enabling of camera to letterbox screen
-
-
-	
-	SET_TOUCH				Touch this entity
-
-SET_GOALMODE	Set/change your team goal mode (for TeamCommander NPCs).  NOT supported.
-
-PAGE  
-
-
-PAGE  10
-
-
-
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            &  '  >  ?  @  M  N  O  �  �  �  �  �  �  �  �  �      =  >  U  V  W  r  s  t  �  �  �  �  �  �  �  �  �  �  �  �                  /  0  1  =  >  @  ������������������й����������������й����������������j  OJ QJ U�j�  OJ QJ U�jE  OJ QJ U�j�   OJ QJ U5�6�OJ QJ \�]� �jm   OJ QJ U5�OJ QJ \� 0J OJ QJ  �j    OJ QJ Uj    OJ QJ UOJ QJ  CJ OJ QJ 6       %  &  O  X  ^  k  |  �  �  �  �  �  �          /  8  =  t  z  �  �  �  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                             $ ��`��a$   $ a$       ��  ��  ��                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             �  �  �  �  �  �  �  �  �      @  t  �  �  �    =  [  {  �  �  �  %  G  p  �  �  �  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                $ ��`��a$   $ a$  @  A  b  c  d  r  s  t  u  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �                5  6  7  ;  <  =  >  T  U  V  Y  ����������������������������������������x�� �j2  5�OJ QJ U\��j�  5�OJ QJ U\��jN  5�OJ QJ U\��j�  5�OJ QJ U\��jr  5�OJ QJ U\��j  5�OJ QJ U\�0J 5�OJ QJ \� �j�  5�OJ QJ U\�5�OJ QJ \� j    5�OJ QJ U\� /Y  Z  [  \  s  t  u  y  z  {  |  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  
-      #  $  %  &  >  ?  @  E  F  H  I  d  e  ������������������������������������������x �jG  5�OJ QJ U\��j�  5�OJ QJ U\��jk  5�OJ QJ U\��j�  5�OJ QJ U\��j{  5�OJ QJ U\��j
-  5�OJ QJ U\�0J 5�OJ QJ \� �j�  5�OJ QJ U\�5�OJ QJ \� j    5�OJ QJ U\� /e  f  n  o  q  r  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  	  	  	  !	  "	  %	  &	  E	  F	  G	  S	  T	  W	  X	  x	  y	  z	  �	  �	  �	  �	  �	  ��������������������������������������������                          �j  5�OJ QJ U\��j�
-  5�OJ QJ U\��j
-  5�OJ QJ U\��j�	  5�OJ QJ U\��j1	  5�OJ QJ U\��j�  5�OJ QJ U\�5�OJ QJ \� 0J 5�OJ QJ \� j    5�OJ QJ U\� 0�  #	  U	  �	  �	  �	  
-  Q
-  �
-  �
-  �
-  +  �  �  �  +  c  �  �  
-  
-  
-  
-  
-  
-  (  )  A  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                             $ ��`��a$     $ a$  �	  �	  �	  �	  �	  �	  �	  �	  �	  �	  �	  �	  �	  �	  
-  
-  
-  
-  
-  !
-  "
-  A
-  B
-  C
-  O
-  P
-  R
-  S
-  }
-  ~
-  
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �
-  �������������Ҵ�����ҥ�����Җ�����҇������x���� �j�  5�OJ QJ U\��j  5�OJ QJ U\��j�
-  5�OJ QJ U\��j	
-  5�OJ QJ U\��j�  5�OJ QJ U\��j
-  5�OJ QJ U\�5�OJ QJ \� 0J 5�OJ QJ \� j    5�OJ QJ U\��j�  5�OJ QJ U\� /�
-  �
-        )  *  -  .  R  S  T  e  f  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �  �        )  *  -  .  P  Q  R  a  b  e  f  �  �  �  �  ����������������������������������������x�� �j  5�OJ QJ U\��j�  5�OJ QJ U\��j  5�OJ QJ U\��j�  5�OJ QJ U\��j  5�OJ QJ U\��j�  5�OJ QJ U\�0J 5�OJ QJ \� �j  5�OJ QJ U\�5�OJ QJ \� j    5�OJ QJ U\� /�  �  �  �  �  �  �  �  �  �  �  �  �  �  �   
-  
-  
-  B  J  �  �  �  �  Z  k  *  5    �  h  i  }  �  �    "  �  �  �  �  �  &  )  �  �  �  �  �     6  �    �  �  ^"  a"  �$  �$  ����������������������� ���� �����룜����5�>*OJ QJ \�CJ OJ QJ  5�OJ QJ \�^J  5�6�OJ QJ \�]� >*OJ QJ OJ QJ  �j  5�OJ QJ U\�0J 5�OJ QJ \� �j�  5�OJ QJ U\�5�OJ QJ \� j    5�OJ QJ U\� :A  B  J  �  �    \  �  �  �  �  �    b  �  �  �  �    E  Y  Z  k  �  )  *  ~    �  h  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                 $ a$  h  i  }  �  �  �  �  �      "  �  �  �  �  �  �  �  �  n  �  �    �  �  �  �  �  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                             $ ��`��a$   $ a$     �       6  }  ~  �  �  �  �  �  �  �  �  �  �  �  �  u  v  �  �  H  I  �  �  	!  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                    $ a$   $ ��`��a$   $ ����^��`��a$    	!  
-!  �!  �!  �!  �!  �!  �!  "  "  "  -"  /"  0"  S"  T"  �"  �"  �"  �"  �"   #  3#  4#  �#  �#  �#  �#  $  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                $ ��`��a$   $ a$  $  $  #$  ?$  A$  B$  O$  k$  l$  3%  4%  �%  �%  1'  2'  3'  �'  �'  �'  �'  �'  �'  (  
-(  V(  W(  �(  �(  �(  �(  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                 $ a$  �$  {%  �%  &  
-&  7&  2'  3'  7'  U(  W(  ^(  �(  �(  �(  u*  v*  y*  2,  :,  �.  �.  �.  /  /  �1  �1  2  42  �3  �3  �5  �5  �7  �7  �7  �7  )8  -8  18  �8  �8  ,9  49  �:  �:  P;  W;  �<  �<  �<  �<  �<  P=  Q=  U=  �>  �>  2@  3@  9@  aB  eB  �B  �B  {D  �D  J  J  ��������������������������������������������������������������������  5�CJ OJ QJ \�^J  CJ OJ QJ ^J  CJ OJ QJ  6�OJ QJ ]� OJ QJ ^J  5�OJ QJ \�^J  >*OJ QJ OJ QJ  5�6�OJ QJ \�]� 5�OJ QJ \�D�(  �(  �(  �)  �)  �)  �)  t*  v*  }+  ~+  �+  �+  1,  2,  P-  d-  e-  �-  �-  �-  �-  �-  �-  .  .  .  �.  �.  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                        $a$  $ a$  �.  �.  �0  �0  �1  �1  �1  �1  2  2  2  42  N2  O2  �2  �2  �2  3  T3  �3  �3  �3  �3  4  ,4  H4  R4  |4  �4  �4  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                 $ a$  �4  �4  �4   5  5  �5  �5  u6  �6  �6  �6  �6  �6  �6  7  
-7  7  #7  E7  K7  M7  N7  �7  �7  �7  �7  �7  �7  �7  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                                $ a$  �7  �7  �7  (8  )8  �8  �8  �8  �8  +9  ,9  �9  �9  �:  �:  �:  �:  O;  P;  �;  �;  �;  �;  �;  <  <  #<  %<  &<  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                  7$ 8$ H$   $ a$    &<  A<  C<  �<  �<  �<  �<  �<  P=  Q=  �>  �>  i?  ~?  �?  �?  �?  �?  2@  3@  �@  fA  �A  �A  �A  �A  �A  `B  aB  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                    $a$    $ a$  aB  �B  �B  �B  C  )C  ;C  <C  zD  {D  �D  �D  �D  E  E  �E  �E  F  F  �F  �F  8G  9G  �G  �G  AH  BH  �H  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                         $ ���`�^��`�`�a$   $ a$  �H  �H  �I  �I  �I  J  J  J  @J  ZJ  \J  �J  �J  �J  �J  �J  )K  *K  �M  �M  �M  �M  �M  gN  hN  jN  �N  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                         7$ 8$ H$   $ a$   $ ���`�^��`�`�a$  J  *K  9K  �M  �M  �M  hN  jN  �N  �N  �O  �O  �O  �O  �Q  �Q  �R  �R  �Y  �Y  ?Z  �[  �[  �[  �\  �\  �]  �]  �]  �]  `  `  �b  �b  Mc  Uc  �f  )g  Bi  _i  `i  �k  l  Bl  _l  �l  �l  �l  Dm  am  um  !n  ,n  ������ � ȾȶȶȬȞ Ț � � Ȓ� � Ȉ� � � ȅȅȅ ȅȅ  ^J   5�CJ OJ QJ \� 5�CJ OJ QJ >*CJ 5�6�>*CJ OJ QJ \�]�6�CJ OJ QJ ]� 5�6�>*\�]�>*CJ OJ QJ ^J CJ OJ QJ  CJ  OJ QJ  B*CJ OJ QJ ^J aJ ph    #5�B*CJ OJ QJ \�^J aJ ph    5�OJ QJ \�4�N  �N  �N  :O  �O  �O  �O  �O  �O  vQ  �Q  �Q  �Q  [U  \U  �X  �X  �Y  �Y  �Y  ?Z  �Z  �[  �[  �[  �[  �[  \  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                    ��`��      
-& F         \  )\  p\  y\  �\  �\  �\  �\  �\  >]  G]  h]  �]  �]  �^  Q_  __  �_  �_  �_  `  `  `  ~a  �a  �a  Gb  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                   ��^��   ��^��   	  ����^��`��   ��`�� Gb  Pb  kb  �b  �b  �b  -c  >d  %e  3e  �e  �f  �f  �f  �f  �f  )g  7g  Uh  _h  }h  �h  �h  Bi  _i  `i  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                              ��^��   ��^��      	  ����^��`��   ��`�� `i  zi  {i  �i  k  'k  �k  l  %l  @l  Bl  _l  al  yl  �l  �l  �l  �l  �l  Dm  am  um  �m  !n  ,n  tn  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                ��^�� 	  ����^��`��  ��`�� 	  ����^��`��          ,n  -n  �n  �n  �o  zp  {p  �p  hq  wq  Hs  Us  �s  �s  Hw  Iw  y  �y  �y  �y  :z  Iz  vz  �z  L�  [�  у  ރ  �  ��  �  #�  c�  p�  ��  ��  �  ��  Ć  Ն  f�  v�  �  �  ��  ƈ  Z�  h�  ��  ��  �  ��  �  �  А  ѐ  
-�  �  >�  �  ��  ��  ��  ������� � � � �� �� � � � � � � � � � � � � � � � � �� � ��� �5�CJ OJ QJ \�^J  CJ OJ QJ ^J  5�6�>*\�]�OJ QJ  
-5�>*CJ \�
-B*aJ ph    B*CJ OJ QJ ^J aJ ph  � 5�\� B*CJ OJ QJ ^J aJ ph    CJ OJ QJ  5�CJ OJ QJ \�>tn  �n  �n  �n  'o  So  {o  �o  �o  ^p  {p  �p  �p  �p  hq  wq  �r  �r  �r  �r  �r  	s  )s  +s  Fs  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                    ��^�� 	 ����^��`��  ��`��    �  ^�  
-  �h7$ 8$ H$ ^�h   ��^�� Fs  Gs  Hs  Us  �s  �s  Hw  Iw  y  y  �y  �y  �y  �y  :z  Iz  vz  �z  O|  P|  r|  �|  �|  �|  }  9}  :}  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                        $�  ^�  a$
-  �h7$ 8$ H$ ^�h  �  ^�     :}  �}  �}  �}  �~  �~    <  U  W  m  �  �  �  �  K�  L�  [�  ��  ��  Ѓ  у  ҃  Ӄ  ރ  t�  ��  ��  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                        	 �  ��^�  `��  �  ^�     ��  �  ��  �  #�  c�  p�  ��  ��  �  ��  Ć  Ն  f�  v�  �  �  ��  ƈ  Z�  h�  ��  ��  �  ��  �  	�  
-�  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                        �  ^�   	 �  ��^�  `�� 
-�  �  �  �  ��  ��  ��  �  �  u�  v�  А  ѐ  
-�  �  �  ��  ��  ��  ��  ��  ��  ˕  ̕  ߕ  �  �  ;�  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                          ��^��     $a$      ;�  d�  j�  ��  ��  ��  ��  ��  �  �  �  R�  p�  v�  ��  ͘  ��  �  $�  ̙  �  �  �  F�  L�  l�  ��  ��  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                                 ��`��   ��^�� ��  �  �  $�  ̙  L�  l�  �  �  �  Y�  *�  ��  �  $�  ��  ��  �  ��  o�  {�  ��  �  �  �  �  ��  ȧ  �  �  �  I�  �  ��  /�  ڮ  �  �  ��  ��  ݰ  �  R�  ��  m�  n�  ��  ��  ��  ��  ��  ��  ĳ  2�  E�  q�  ��  ɹ  ۹  O�  Y�  ׺  � � � � � � � � � � �� � � ��� �� ��� � ���ιΫ���ΟΟ� Ο �  5�\� ^J   0J CJ OJ QJ  �jv  CJ OJ QJ Uj    CJ OJ QJ U5�CJ OJ QJ \� CJ OJ QJ  ^J  5�CJ OJ QJ \�^J  >*CJ OJ QJ ^J  5�6�>*CJ OJ QJ \�]�^J  =��  ��  �  �  �  ��  ��  �  �  Y�  u�  {�  ��  ͞  מ  *�  0�  ��  ��  ��  ��  ��  �  �  $�  ��  ��  �  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                           ��^��     ��`�� �  ��  ��  ��  ɢ  ��  (�  S�  Y�  m�  n�  o�  {�  ��  ��  �  �  �  �  ��  ȧ  ��  ��  ��  ��  ��  �  �  �  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                          ��^��   �  �  7�  I�  �  ��  /�  ��  Ȭ  ڬ  ߬  	�  9�  C�  I�  �  �  ��  ��  ݰ  �  +�  Q�  ղ  �  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                  
-& F   $a$ 	  ����^��`��   ��^��      
-& F   �h^�h        �  �  +�  J�  m�  ��  ��  ĳ  Ǵ  ݴ  ��  ��  #�  t�  v�  2�  E�  o�  p�  q�  ��  z�  ��  ȹ  ɹ  ۹  ׺  غ  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                  ��`��   ��^��       
-& F  غ  �  ��  ��   �  �  q�  ��  ۼ  ܼ  �  "�  �  �  ��  �  ,�  m�  ��  ��  �  �  l�  |�  �  �  n�  z�  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                                  ��^��        ׺  �  ��  ��  ��  ܼ  �  "�  �  �  ,�  m�  ��  ��  �  �  l�  |�  �  �  n�  z�  ��  ��  E�  T�  j�  k�  ��  ��  l�  o�  w�  ��  ��  ��  ��  ��  ��  ��  ��  ��  ��  ��  ��  ��  ��  ��  �������� � � � � � � � � ������� ����� ������ �                                                                                                                           0J mH nH u0J  
-j    0J U5�OJ QJ \� 5�>*OJ QJ \�CJ OJ QJ ^J  
-5�\�^J  CJ ^J   CJ OJ QJ  ^J   5�CJ OJ QJ \�/z�  ��  ��  ��  ��  ��  ��  ��  E�  T�  j�  k�  ��  ��  ��  ��  ��  �  H�  ~�  ��  ��  u�  ��  ��  �  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                            	  �����^��`���   $a$          ��`��   ��^�� �  o�  ��  "�  #�  ��  ��  ��  ��  C�  |�  ��  ��  �  <�  ~�  ��  ��  2�  ��  ��  ]�  ^�  ��  ��  �  7�  ��  ��  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                      	  �����^��`��� ��  �  a�  ��  ��  �  X�  Y�  {�  ��  ��  
-�  ?�  z�  ��  ��  5�  ��  C�  ��  ��  ��  O�  ��  ��  ��  1�  2�  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                          ��`�� 	  �����^��`���    2�  c�  ��  ��  ��   �  +�  ]�  ��  ��  
-�  *�  +�  H�  ��  ��  7�  ��  ��  ��  ��  ��  "�  #�  ��  ��  ��  ��  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                          ��`�� 	  �����^��`���    ��  ��  �  	�  :�  ��  ��  ��  \�  ]�  ��  ��  ��  ��  ��  ��  D�  E�  m�  n�  ��  ��  �  �  ;�  <�  ��  ��  ��  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                   	  �����^��`���    ��  ��  ��  ��  B�  D�  d�  e�  ��  ��  ��  ��  �  �  O�  P�  ��  ��  ��  ��  @�  A�  ��  ��  ��  ��  8�  9�  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                          ��^�� 	  �����^��`���    9�  ��  ��  ��  ��  Z�  [�  ��  ��  ��  ��  +�  ,�  =�  ��  ��  ��  B�  C�  ��  ��   �  �  R�  S�  T�  V�  v�  w�  �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �            �                      	  �����^��`��� w�  ��  ��  ��  ��  ��  ��  ��  ��  ��  ��  �            �            �            �            �            �            �            �            �            �                                                                                                                                                                                                                                                                                                 �h]�h  ���� &`#$  $ a$  	 �����^��`��� 
-  1�h��/ ��=!�"�#��$��%�                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                m   D                                                               ���y����� � K�         u s i n g   k   D                                                               ���y����� � K�         f l o w   m   D                                                               ���y����� � K�         b r u s h   k   D                                                               ���y����� � K�         m i s c   m   D                                                               ���y����� � K�         d e b u g   i   D                                                               ���y����� � K�         n p c   �   D                                                               ���y����� � K�         _ B a s i c _ C o n c e p t s   k   D                                                               ���y����� � K�         w h a t   o   D                                                               ���y����� � K�         _ T A S K S   m   D                                                               ���y����� � K�         _ M o v e   w   D                                                               ���y����� � K�         _ M o v e T o E n t   m   D                                                               ���y����� � K�         _ W A L K   k   D                                                               ���y����� � K�         _ R U N   m   D                                                               ���y����� � K�         _ P A T H   q   D                                                               ���y����� � K�         _ A T T A C K   w   D                                                               ���y����� � K�         _ S E T _ E N E M Y   y   D                                                               ���y����� � K�         _ S E T _ H I T L O C   m   D                                                               ���y����� � K�         b a s i c   o   D                                                               ���y����� � K�         _ G o a l s   u   D                                                               ���y����� � K�      
-   _ H o l d A r e a   u   D                                                               ���y����� � K�      
-   _ S u r r o u n d   o   D                                                               ���y����� � K�         _ G u a r d   q   D                                                               ���y����� � K�         _ F o l l o w   �   D                                                               ���y����� � K�         _ G o a l _ R e l a t e d _ S e t   }   D                                                               ���y����� � K�         _ S E T _ A R E A G O A L      D                                                               ���y����� � K�         _ S E T _ A R E A G O A L 2   {   D                                                               ���y����� � K�      
-   _ S E T _ N A V G O A L   }   D                                                               ���y����� � K�         _ S E T _ G O A L M O D E      D                                                               ���y����� � K�         _ S E T _ G O A L F L U S H   }   D                                                               ���y����� � K�         _ S E T _ G O A L D I S T   �   D                                                               ���y����� � K�         _ H a n d l i n g _ E n e m i e s _ D u r i n g   y   D                                                               ���y����� � K�         _ A n i m a t i o n s   u   D                                                               ���y����� � K�      
-   _ S E T _ A N I M   �   D                                                               ���y����� � K�         _ S E T _ H A N D S I G N A L   �   D                                                               ���y����� � K�         _ C o m m o n _ A n i m a t i o n s   �   D                                                               ���y����� � K�         _ F a c i n g _ a n d _ L o o k i n g   �   D                                                               ���y����� � K�         _ S E T _ L O O K _ T A R G E T      D                                                               ���y����� � K�         _ S E T _ L O O K _ R O O T   �   D                                                               ���y����� � K�         _ S E T _ L O O K _ P A R E N T   {   D                                                               ���y����� � K�      
-   _ S E T _ T A L K _ T O   y   D                                                               ���y����� � K�         _ S E T _ S E A R C H   e   D                                                               ���y����� � K�         A   m   D                                                               ���y����� � K�         f o r c e                                  
-  i           8  @�� 8   N o r m a l       CJ _HaJ mH	sH	tH	L @  L  	 H e a d i n g   1     $$@& a$ 5�>*CJ OJ QJ \�^J  B @  B  	 H e a d i n g   2     $@& 5�CJ OJ QJ \�^J H @  H  	 H e a d i n g   3     $$@&a$ 5�CJ OJ QJ \�^J H @  H  	 H e a d i n g   4     $$@&a$ 5�>*OJ QJ \�^J  L @  L  	 H e a d i n g   5     $$��@&`��a$ 5�OJ QJ \�^J 8 @  8  	 H e a d i n g   6     $$@&a$ 5�\�      < A@��� <   D e f a u l t   P a r a g r a p h   F o n t             2 >@ � 2   T i t l e     $a$ 5�CJ \�aJ , @ ,   H e a d e r   
-  
-� ��!   & )@� &   P a g e   N u m b e r     2 B@ "2  	 B o d y   T e x t      CJ OJ QJ L C@ 2L   B o d y   T e x t   I n d e n t   
-  ��^�� CJ OJ QJ ^J @ R@ B@   B o d y   T e x t   I n d e n t   2   
-  ��^��  ` S@ R`   B o d y   T e x t   I n d e n t   3     ��1$ 7$ 8$ H$ ^�� CJ OJ QJ ^J aJ . U@� a.  	 H y p e r l i n k    >*B*ph  � > V@� q>   F o l l o w e d H y p e r l i n k    >*B*ph� �     ��    P  ����          %   &   O   X   ^   k   |   �   �   �   �   �   �           /  8  =  t  z  �  �  �  �  �  �  �  �  �  �  �      @  t  �  �  �    =  [  {  �  �  �  %  G  p  �  �  �  #  U  �  �  �    Q  �  �  �  +  �  �  �  +  c  �  �  	  	  	  	  	  	  (
-  )
-  A
-  B
-  J
-  �
-  �
-    \  �  �  �  �  �    b  �  �  �  �  
-  E
-  Y
-  Z
-  k
-  �
-  )  *  ~    �  h  i  }  �  �  �  �  �      "  �  �  �  �  �  �  �  �  n  �  �    �  �  �  �  �       6  }  ~  �  �  �  �  �  �  �  �  �  �  �  �  u  v  �  �  H  I  �  �  	  
-  �  �  �  �  �  �        -  /  0  S  T  �  �  �  �  �     3  4  �  �  �  �        #   ?   A   B   O   k   l   3!  4!  �!  �!  1#  2#  3#  �#  �#  �#  �#  �#  �#  $  
-$  V$  W$  �$  �$  �$  �$  �$  �$  �%  �%  �%  �%  t&  v&  }'  ~'  �'  �'  1(  2(  P)  d)  e)  �)  �)  �)  �)  �)  �)  *  *  *  �*  �*  �*  �,  �,  �-  �-  �-  �-  .  .  .  4.  N.  O.  �.  �.  �.  /  T/  �/  �/  �/  �/  0  ,0  H0  R0  |0  �0  �0  �0  �0   1  1  �1  �1  u2  �2  �2  �2  �2  �2  �2  3  
-3  3  #3  E3  K3  M3  N3  �3  �3  �3  �3  �3  �3  �3  �3  �3  (4  )4  �4  �4  �4  �4  +5  ,5  �5  �5  �6  �6  �6  �6  O7  P7  �7  �7  �7  �7  �7  8  8  #8  %8  &8  A8  C8  �8  �8  �8  �8  �8  P9  Q9  �:  �:  i;  ~;  �;  �;  �;  �;  2<  3<  �<  f=  �=  �=  �=  �=  �=  `>  a>  �>  �>  �>  ?  )?  ;?  <?  z@  {@  �@  �@  �@  A  A  �A  �A  B  B  �B  �B  8C  9C  �C  �C  AD  BD  �D  �D  �E  �E  �E  F  F  F  @F  ZF  \F  �F  �F  �F  �F  �F  )G  *G  �I  �I  �I  �I  �I  gJ  hJ  jJ  �J  �J  �J  :K  �K  �K  �K  �K  �K  vM  �M  �M  �M  [Q  \Q  �T  �T  �U  �U  �U  ?V  �V  �W  �W  �W  �W  �W  X  )X  pX  yX  �X  �X  �X  �X  �X  >Y  GY  hY  �Y  �Y  �Z  Q[  _[  �[  �[  �[  \  \  \  ~]  �]  �]  G^  P^  k^  �^  �^  �^  -_  >`  %a  3a  �a  �b  �b  �b  �b  �b  )c  7c  Ud  _d  }d  �d  �d  Be  _e  `e  ze  {e  �e  g  'g  �g  h  %h  @h  Bh  _h  ah  yh  �h  �h  �h  �h  �h  Di  ai  ui  �i  !j  ,j  tj  �j  �j  �j  'k  Sk  {k  �k  �k  ^l  {l  �l  �l  �l  hm  wm  �n  �n  �n  �n  �n  	o  )o  +o  Fo  Go  Ho  Uo  �o  �o  Hs  Is  u  u  �u  �u  �u  �u  :v  Iv  vv  �v  Ox  Px  rx  �x  �x  �x  y  9y  :y  �y  �y  �y  �z  �z  {  <{  U{  W{  m{  �{  �{  �{  �{  K~  L~  [~  �  �  �  �  �  �  �  t�  ��  ��  �  ��  �  #�  c�  p�  ��  ��  �  ��  Ă  Ղ  f�  v�  �  �  ��  Ƅ  Z�  h�  ��  ��  �  ��  �  	�  
-�  �  �  �  ��  ��  ��  �  �  u�  v�  Ќ  ь  
-�  �  �  ��  ��  ��  ��  ��  ��  ˑ  ̑  ߑ  �  �  ;�  d�  j�  ��  ��  ��  ��  ��  �  �  �  R�  p�  v�  ��  ͔  ��  �  $�  ̕  �  �  �  F�  L�  l�  ��  ��  ��  �  �  �  ��  ��  �  �  Y�  u�  {�  ��  ͚  ך  *�  0�  ��  ��  ��  ��  ��  �  �  $�  ��  ��  �  ��  ��  ��  ɞ  ��  (�  S�  Y�  m�  n�  o�  {�  ��  ��  �  �  �  �  ��  ȣ  ��  ��  ��  ��  ��  �  �  �  �  7�  I�  �  ��  /�  ��  Ȩ  ڨ  ߨ  	�  9�  C�  I�  �  �  ��  ��  ݬ  �  +�  Q�  ծ  �  �  +�  J�  m�  ��  ��  į  ǰ  ݰ  ��  ��  #�  t�  v�  2�  E�  o�  p�  q�  ��  z�  ��  ȵ  ɵ  ۵  ׶  ض  �  ��  ��   �  �  q�  ��  ۸  ܸ  �  "�  �  �  ��  �  ,�  m�  ��  ��  �  �  l�  |�  �  �  n�  z�  ��  �  �  �  ��  ��  ��  E�  T�  j�  k�  ��  ��  ��  ��  ��  �  H�  ~�  ��  ��  u�  ��  ��  �  o�  ��  "�  #�  ��  ��  ��  ��  C�  |�  ��  ��  �  <�  ~�  ��  ��  2�  ��  ��  ]�  ^�  ��  ��  �  7�  ��  ��  �  a�  ��  ��  �  X�  Y�  {�  ��  ��  
-�  ?�  z�  ��  ��  5�  ��  C�  ��  ��  ��  O�  ��  ��  ��  1�  2�  c�  ��  ��  ��   �  +�  ]�  ��  ��  
-�  *�  +�  H�  ��  ��  7�  ��  ��  ��  ��  ��  "�  #�  ��  ��  ��  ��  ��  �  	�  :�  ��  ��  ��  \�  ]�  ��  ��  ��  ��  ��  ��  D�  E�  m�  n�  ��  ��  �  �  ;�  <�  ��  ��  ��  ��  ��  ��  B�  D�  d�  e�  ��  ��  ��  ��  �  �  O�  P�  ��  ��  ��  ��  @�  A�  ��  ��  ��  ��  8�  9�  ��  ��  ��  ��  Z�  [�  ��  ��  ��  ��  +�  ,�  =�  ��  ��  ��  B�  C�  ��  ��   �  �  R�  S�  T�  V�  v�  w�  ��  ��  ��  ��  ��  ��  �   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��    0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��    0       �   ��    0       �   ��    0       �   ��    0       �   ��    0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��    0       �   ��    0       �   ��    0       �   ��    0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��    0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��   0       �   ��    0       �   �   0       �   ��    0       �jJ  �    0       �jJ  �    0       �jJ  �    0       �   ��    0       �jJ  X   0       �jJ  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �    0       ��K  �   0       ��K  �   0       ��K  �   0      ��K  �    0       ��K  �    0       ��K  (   0       �jJ     0       �jJ  �    0       ��W  �    0       ��W  �    0       ��W  �    0       ��W  �    0       ��W  �    0       ��W     0       �jJ  �    0       ��X  �    0       ��X  �    0       ��X  �    0       ��X  �    0       ��X  �    0       ��X     0       �jJ  �    0       ��Y  �    0       ��Y  �    0       ��Y  �    0       ��Y  �    0       ��Y  �    0       ��Y  �    0       ��Y  �    0       ��Y     0       �jJ  �    0       �
-\  �    0       �
-\  �    0       �
-\  �    0       �
-\  �    0       �
-\  �    0       �
-\  �    0       �
-\  �    0       �
-\     0       �jJ  �    0       ��^  �    0       ��^  �    0       ��^  �    0       ��^  �    0       ��^  �    0       ��^  �    0       ��^  �    0       ��^  �    0       ��^     0       �jJ  �   0       ��b  �    0       ��b  �    0       ��b  �    0       ��b  �    0       ��b  �    0       ��b  �    0       ��b  �    0       ��b  �    0       ��b  �    0       ��b  8   0       ��b  �    0       �\e     0       �jJ  �   0       �we  �   0       �we  �   0       �we  �    0       �we  �   0       �we  �   0       �we  �   0       �we  �    0       �we  �   0       �we  �   0       �we  �   0       �we  �   0       �we  �    0       �we  �   0       �we  �   0       �we  �    0       �we  �    0       �we  �   0       �we  �    0       �we  �    0       �we     0       �jJ  �    0       �j  �    0       �j  �    0       �j  �    0       �j  �    0       �j  �    0       �j  �    0       �j  �    0       �j  �    0       �j  �    0       �j  �    0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �    0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  �   0       �j  8   0       �j  �    0       ��  �    0       ��  8   0       �j  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��     0       �jJ  �    0       �̌  �    0       �̌     0       �jJ  �    0       ��  �   0       ��  �   0       ��  �   0       ��  �   0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��  �    0       ��     0       �jJ  �    0       �}�  �    0       �}�  �    0       �}�  �    0       �}�     0       �jJ  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �   0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �   0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �   0       ���  �   0       ���  �    0       ���  �    0       ���  �    0       ���     0       �jJ  �    0       � �  �    0       � �  �    0       � �  �    0       � �  �    0       � �  �    0       � �  �    0       � �     0       �jJ  �   0       �&�  �   0       �&�  �   0       �&�  �    0       �&�  �    0       �&�  H   0       �&�  �    0       ���     0       �jJ  �    0       ��     0       �jJ  �    0       ���  �   0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���     0       �jJ  �    0       �k�  �    0       �k�  �    0       �k�     0       �jJ  �    0       ��     0       �jJ  �    0       ��     0       �jJ  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���     0       �   �   0       ��  �   0       �3�  �   0       �3�  �   0       �3�  �   0       �3�  �    0       �3�  �    0       �3�  �    0       �3�  �    0       �3�  �    0       �3�  �    0       �3�  �   0      �3�  �    0       �3�  �    0       �3�  �   0       �3�  �   0      �3�  �   0       ���     0       �ؤ  �    0       ���  �   0       ���  �   0      ���  �   0      ���  �   0      ���  �   0      ���  �   0      ���  �   0      ���  �    0       ���  �    0       ���     0       �ؤ  �    0       �z�  �    0       �z�  �    0       �z�  �    0       �z�  �    0       �z�  �    0       �z�  �    0       �z�  �    0       �z�     0       �ؤ  �    0       ��  �    0       ��  �    0       ��     0       �ؤ  �    0       �0�  �    0       �0�  �    0       �0�  �    0       �0�     0       �ؤ  �   0       ���  �    0       ���  �    0       ���  �   0       ���  �    0       ���  �   0       ���     0       �ؤ  �   0       ���     0       �ؤ  �    0       �0�  �    0       �0�     0       �   ��   0       ���  �    0       ���  �    0       ���     0       ���  �   0       ���  �    0       ���  �   0       ���  �    0       ���     0       ���  �    0       �U�     0       ���  �    0       �μ     0       ���  �    0       �+�     0       ���  �    0       �ý     0       ���  �    0       �-�  �    0       �-�  �    0       �-�     0       ���  �    0       ���  �    0       ���  �    0       ���  �    0       ���     0       ���  �    0       ��  �    0       ��  8   0       ��  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �    0       �*�  �   0       �*�  �   0       �   ��@   0       �   ��@  0       �   ��@  0       �   �
-    0                                                                @  Y  e  �	  �
-  �  �$  J  ,n  ��  ׺  ��  u   y   z   {   }   ~      �   �   �   �   �      �  �  A  h  �  	!  $  �(  �.  �4  �7  &<  aB  �H  �N  \  Gb  `i  tn  Fs  :}  ��  
-�  ;�  ��  �  �  �  غ  z�  �  ��  2�  ��  ��  9�  w�  ��  v   x   |   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �      ��  w   &   ?   M   �   �   �   =  V  r  �  �  �  �        0  =  @  c  r  t  �  �  �  �  �  �  �  �  �        6  ;  =  U  Y  [  t  y  {  �  �  �  �  �  �  �  �  �    #  %  ?  E  H  e  n  q  �  �  �  �  �  �  �  �  �    !  %  F  S  W  y  �  �  �  �  �  �  �  �      !  B  O  R  ~  �  �  �  �  �  �  �  �    )  -  S  e  �  �  �  �  �  �  �    )  -  Q  a  e  �  �  �  �  �  �  �  �  m�  ��  ��  ��  X��X��X��X�X��X�X�X�X��X��X��X��X��X��X��X�X�X��X�X��X��X��X��X�X��X��X��X�X��X��X��X�X��X��X�X��X��X��X��X�X�X�X��                   !� !������=    _ H l t 1 1 0 4 7 7 3 0  _ H l t 1 1 0 4 8 4 5 6  _ H l t 1 1 0 4 7 7 1 1  _ H l t 1 1 0 4 7 7 1 2  _ H l t 1 1 0 4 8 2 2 2  _ H l t 1 1 0 4 8 3 1 9  _ H l t 1 1 0 5 1 6 6 8  _ H l t 1 1 0 5 1 7 2 5  _ H l t 1 1 0 5 1 6 9 8  _ H l t 1 1 0 4 7 8 5 4  _ H l t 1 1 0 4 7 9 3 8  _ H l t 1 1 0 4 7 9 7 0  _ H l t 1 1 0 4 8 0 2 9  _ H l t 1 1 0 4 8 0 8 8  _ H l t 1 1 0 5 1 4 9 7  _ H l t 1 1 0 4 8 1 2 8  _ H l t 1 1 0 5 7 4 4 8  u s i n g  f l o w  b r u s h  m i s c  d e b u g  n p c  _ B a s i c _ C o n c e p t s  w h a t  _ T A S K S  _ M o v e 
- _ M o v e T o E n t  _ W A L K  _ R U N  _ P A T H  _ A T T A C K 
- _ S E T _ E N E M Y  _ S E T _ H I T L O C  b a s i c  _ G o a l s 	 _ H o l d A r e a 	 _ S u r r o u n d  _ G u a r d  _ F o l l o w  _ G o a l _ R e l a t e d _ S e t 
- _ S E T _ A R E A G O A L  _ S E T _ A R E A G O A L 2  _ S E T _ N A V G O A L 
- _ S E T _ G O A L M O D E  _ S E T _ G O A L F L U S H 
- _ S E T _ G O A L D I S T  _ H a n d l i n g _ E n e m i e s _ D u r i n g  _ A n i m a t i o n s 	 _ S E T _ A N I M  _ C o m m o n _ A n i m a t i o n s  _ S E T _ H A N D S I G N A L  _ F a c i n g _ a n d _ L o o k i n g  f o r c e  _ S E T _ L O O K _ T A R G E T  _ S E T _ L O O K _ P A R E N T  _ S E T _ L O O K _ R O O T  _ S E T _ T A L K _ T O  _ S E T _ L O O K _ T Y P E  _ S E T _ S E A R C H  A �  7  9  9  k  �  �  �  �  B    �  �  V  �  �  �  	  5  �3  �8  �I  pJ  �K  �U  �W  �W  �X  �Y  \  �^  �b  {e  !j  �u  �  �  ��  �  �  ��  �  ��  o�  �  �  ��  �  ݬ  ��  ɵ   �  ܸ  ��  �  l�  �  n�  �  �  �  ��     @  @  @  @  @  @  @  @  @	  @
-  @  @  @
-  @  @  @  @                                                 !   "   #   $   %   &   '   (   )   *   +   ,   -   .   /   0   1   2   3   4   5   6   7   8   9   :   ;   <   �  8  :  :  l  �  �  �  �  C     �  �  W  �  �  �  	  5  �3  �8  �I  pJ  �K  �U  �W  �W  �X  �Y  \  �^  �b  {e  !j  �u  �  �  ��  �  �  ��  �  ��  o�  �  �  ��  �  ݬ  ��  ɵ   �  ܸ  ��  �  l�  �  n�  �  �  �  ��      F   M   l   {   $  .  {  �  �  �  �  �      f  n  �  �  	  	  	  	  �	  �	  )
-  0
-  �  �  
-  
-
-  =
-  D
-  Q
-  X
-  Z
-  b
-  c  m  �  �  �  �  �  �  �&  �&  V'  ['  �)  �)  �)   *  +  
-+  v+  �+  �+  �+  -  
--  9-  =-  t-  ~-  �-  �-  �-  �-  �-  �-  !/  $/  \/  _/  �/  �/  �/  �/  �/  �/  �/  0  <0  D0  �0  �0  �0  �0  �0  �0  $1  01  �1  �1  �1  �1  �1  �1  +3  13  Z3  `3  �3  �3  �3  �3  ,5  35  �5  �5  �6  �6  �6   7  &8  ,8  \8  f8  �8  �8  Q9  T9  A:  D:  �;  �;  �;  �;  �<  �<  �=  �=  �>  �>  V?  `?  B@  E@  n@  x@  �A  �A  �B  �B  @C  IC  �C  �C  �C  �C  �C  �C  �C  �C  �C  D  tD  D  NF  RF  SF  VF  �F  �F  �F  �F  �I  �I  kK  nK  �K  �K  �K  �K  �K  �K  �K  L  
-L  L  WL  aL  M  M  M  M  jM  tM  �M  �M  �M  �M  lO  qO  �O  �O  1P  :P  BP  KP  �P  �P  Q  Q  �W  �W  
-X  X  �X  �X  �X  �X  2Y  <Y  ZY  cY  �Y  �Y  [  [  �[  �[  �[  �[  %\  -\  �]  �]  ^  '^  2^  8^  �^  �^  h_  m_  �_  �_  �_  �_  �_  �_  o`  r`  �`  �`  �`  �`  sa  {a  �a  �a  �a  �a  kb  sb  �b  �b  �e  �e  ^f  hf  sf  zf  �f  �f  h  h  7h  ;h  ah  gh  rh  vh  �h  �h  ai  gi  k  "k  �k  �k  l  l  �l  �l  m  m  m   m  +m  5m  Dm  Km  �m  �m  �m  n  n  #n  �n  �n  +o  1o  Yr  dr  �r  �r  
-s  s  �s  �s  �t  �t  z  z  "z  ,z  H{  R{  �{  �{  �{  �{  �{  �{  J}  M}  Y}  a}  i}  s}  �}  �}  �~  �~  ~  �  �  �  �  	�  7�  <�  A�  D�  ��  ��  ��  ��  ށ  �  �  �  t�  v�  ��  �  �  �  �  �  j�  s�  ��  ��  ��  ��  �  �  w�  �  ��  ��  ��  ��  �  
-�  j�  p�  <�  F�  ��  ��  ��  Ȕ  �  ��  �  �  <�  E�  5�  A�  P�  V�  Ֆ  �  �  ��  T�  \�  ]�  i�  y�  ��  �  ��  ��  ��  �  ��  �  �  �  �  %�  -�  ��  ��  ��  ��  ޜ  �  9�  A�  T�  ]�  t�  }�  ��  ��  �  �  ��  Ğ  �  �  �  #�  Y�  _�  :�  >�  ��  ��  ��  �  ά  Ӭ  h�  r�  ��  ��  +�  /�  2�  ;�  ��  ��  �  �  �  &�  U�  Y�  ��  ��  ;�  f�  �  �  &�  0�  H�  L�  �  �  �  �  
-�  �  !�  *�  ��  ��  ��  ��  �  �  ^�  n�  ��  ��  ��   �  �  !�  ,�  0�  v�  y�  z�  ��  ��  ��  �  �  s�  x�  ��  ��  ��  ��  +�  5�  t�  ~�  ��  ��  m�  s�  !�  $�  ��  ��  ��  ��  �  $�  R�  V�  ��  ��  -�  3�  ��  ��  ��  ��  ��  ��  �  �  !�  )�  ��  ��  ��  ��  F�  K�  ��  ��  ��  ��  ��  ��  �  �  %�  6�  ��  ��  �   �  ��  ��  ��  ��  ��  ��  e�  l�  ��  ��  ��  ��  ��  ��  �  �  [�  ^�  |�  �  E�  N�  �  �  "�  +�  9�  ?�  c�  m�  o�  x�  |�  ��  Z�  d�  ��  ��  ��  ��  ��  ��  ��  ��  ��                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |  �  �  �  
-  
-
-  �
-  �
-  �  �  �    �  �  7  =  �    �  �  �  �  �  �  �  �  /  1  �  )  +  F  �  �  �  �  �  �          0  5  �  �  �  �              $   )   B   F   O   T   �!  �!  �"  �"  �#  �#  �#  �#  �#  $  /$  1$  �$  �$  �%  �%  	'  '  ~'  �'  �(  �(  )  )  g)  i)  �)  �)  �)  �)  �)  �)  �-  �-  �-  �-  .  ".  4.  :.  �.  �.  �.  �.  �.  �.  !/  $/  \/  _/  �/  �/  �/  �/  �/  �/  0  0  40  80  ^0  a0  �0  �0  �0  �0  �0  �0  �2  �2  �2  �2  �2  �2  3  3  +3  13  x3  {3  �3  �3  �4  �4  �4  �4  ,5  35  �5  �5  �6  �6  �6   7  P7  V7  �7  �7  �7  �7  8  8  &8  ,8  �8  �8  Q9  �9  �9  �9  ~;  �;  �;  �;  o<  �<  f=  j=  �=  �=  �=  �=  �>  �>  �>  �>  ?  ?  -?  1?  <?  C?  �A  �A  �B  �B  �E  F  @F  DF  dF  hF  �F  �F  �F  �F  SH  _H  �I  �I  [J  fJ  �J  �J  |K  �K  0L  3L  �L  �L  �R  �R  PS  SS  �V  �V  X  X  yX  |X  �X  �X  �X  �X  GY  JY  hY  kY  �Y  �Y  �Y  �Y  [  $[  �[  �[  �[  �[  <\  ?\  �]  �]  P^  S^  k^  n^  �^  �^  -_  1_  �b  �b  �b  �b  _d  bd  �d  �d  Be  Ee  �g  �g  h  h  %h  )h  Bh  Eh  ah  gh  yh  }h  �h  �h  �h  �h  Di  Gi  ai  gi  ui  xi  �j  �j  k  
-k  /k  2k  [k  ^k  �k  �k  `l  cl  Dm  Km  �n  �n  �n  �n  �n  �n  	o  o  +o  1o  rx  ux  �x  �x  y  y  Fy  _y  �y  �y  �z  �z  �z  �z  �z  �z  {  {  <{  @{  X{  [{  n{  q{  �{  �{  }  
-}  �  �  t�  w�  ��  ��  �  	�  8�  <�  ��  ��  ߁  �  t�  v�  ��  �  *�  4�  U�  ]�  ̑  Б  �  �  �  �  C�  F�  j�  p�  W�  [�  ~�  ��  ��  ��  Ք  ؔ  �  �  ѕ  Օ  ��  ��  �  !�  P�  V�  q�  u�  ��  ��  ��  ��  �  ��  \�  `�  ��  ��  ��  ��  כ  �  ��  ��  ��  ��  ��  ��  ў  Ԟ   �  �  0�  3�  Y�  _�  ��  ��  ��  ��  Ť  Ȥ  ��  ��  0�  ;�  ��  ��  ʨ  Ψ  �  �  �  �  ]�  d�  +�  1�  �  
-�  +�  3�  R�  ]�  ް  �  ��  �  '�  *�  g�  m�  ²  β  �  
-�  ,�  b�  r�  u�  ��  ּ  ؼ  �  Ŀ  ǿ  ��  ��  ��  ��  t�  w�  ��  ��  j�  m�  �  �  ��  ��  ��  ��  ��  ��  q�  r�  �  �  �  
-�  %�  )�  ��  ��  �  �  [�  ^�  |�  �  b�  e�  ��  ��  w�  ��  ��  ��  ��   3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3  3        �   	  jK  |K  l�  ��  �  �  �  �   �  "�  ^�  ��  ��  ��  ��  ��  ��  ��                      ��    b g e i s l e r j C : \ D o c u m e n t s   a n d   S e t t i n g s \ b g e i s l e r \ A p p l i c a t i o n   D a t a \ M i c r o s o f t \ W o r d \ A u t o R e c o v e r y   s a v e   o f   S o F 2 _ S c r i p t i n g . a s d  b g e i s l e r 2 \ \ r a v e n d a t a 1 \ s o f 2 \ d o c u m e n t s \ S D K \ S o F 2 _ S c r i p t i n g . d o c  b g e i s l e r j C : \ D o c u m e n t s   a n d   S e t t i n g s \ b g e i s l e r \ A p p l i c a t i o n   D a t a \ M i c r o s o f t \ W o r d \ A u t o R e c o v e r y   s a v e   o f   S o F 2 _ S c r i p t i n g . a s d  b g e i s l e r 2 \ \ r a v e n d a t a 1 \ s o f 2 \ d o c u m e n t s \ S D K \ S o F 2 _ S c r i p t i n g . d o c  b g e i s l e r 2 \ \ r a v e n d a t a 1 \ s o f 2 \ d o c u m e n t s \ S D K \ S o F 2 _ S c r i p t i n g . d o c  b g e i s l e r 2 \ \ r a v e n d a t a 1 \ s o f 2 \ d o c u m e n t s \ S D K \ S o F 2 _ S c r i p t i n g . d o c  b g e i s l e r 2 \ \ r a v e n d a t a 1 \ s o f 2 \ d o c u m e n t s \ S D K \ S o F 2 _ S c r i p t i n g . d o c  b g e i s l e r 2 \ \ r a v e n d a t a 1 \ s o f 2 \ d o c u m e n t s \ S D K \ S o F 2 _ S c r i p t i n g . d o c  b g e i s l e r ! S : \ S D K \ S P \ d o c s \ S o F 2 _ S c r i p t i n g . d o c  b g e i s l e r ! S : \ S D K \ S P \ d o c s \ S o F 2 _ S c r i p t i n g . d o c  Nd��¢���������� �L�)R����������� �N�M�Sx��������� [ZcR�b`���������              h        ������ �^��`���OJ QJ o(  ��   �          h        �p���� p^�p`���OJ QJ o(  o    �          h        �@���� @^�@`���OJ QJ o(  ��   �          h        ����� ^�`���OJ QJ o(  ��   �          h        ������ �^��`���OJ QJ o(  o    �          h        ������ �^��`���OJ QJ o(  ��   �          h        ������ �^��`���OJ QJ o(  ��   �          h        �P���� P^�P`���OJ QJ o(  o    �          h        � ����  ^� `���OJ QJ o(  ��             h        ������ �^��`���OJ QJ o(  ��   �          h        ������ �^��`���OJ QJ o(  o    �          h        �p���� p^�p`���OJ QJ o(  ��   �          h        �@���� @^�@`���OJ QJ o(  ��   �          h        ����� ^�`���OJ QJ o(  o    �          h        ������ �^��`���OJ QJ o(  ��   �          h        ������ �^��`���OJ QJ o(  ��   �          h        ������ �^��`���OJ QJ o(  o    �          h        �P���� P^�P`���OJ QJ o(  ��                        �8���� 8^�8`���o(    .    �                    ����� ^�`���  .    �                    ��	�L�� �	^��	`�L�  .     �                    ������ �^��`���  .    �                    �x���� x^�x`���  .    �                    �H�L�� H^�H`�L�  .     �                    ����� ^�`���  .    �                    ������ �^��`���  .    �                    ���L�� �^��`�L�  .                         ������ �^��`���o(    .                         ������ �^��`���  .    �                    �p�L�� p^�p`�L�  .     �                    �@���� @^�@`���  .    �                    ����� ^�`���  .    �                    ���L�� �^��`�L�  .     �                    ������ �^��`���  .    �                    ������ �^��`���  .    �                    �P�L�� P^�P`�L�  .    �N�M            �L�)            [Zc            Nd�            ������������������           ��     	 	 	 	 	 	 	 	 	 ������������������������������������ ������������������������������������  	 	 	 	 	 	 	 	 	�@� kK  kK  ��t   kK      jK             ��    @  ��    U n k n o w n ��            ��     ��   ��    ��   ��       G�  �z     �       �      T i m e s   N e w   R o m a n   5�                   �    S y m b o l   3&�  �z     �       �      A r i a l   O&�  � �k9          ?       L u c i d a   S a n s   U n i c o d e   ?5�  	�z     �       �      C o u r i e r   N e w   ;�                            �    W i n g d i n g s   "  q� ���h    ,ff,ff        �   0�   _    �                     ! �                                                                                                                                                                                                                                                                                                                         �� � ��20    d      ��                                                                           2�Q �                                ��        S c r i p t i n g   w i t h   S O F 2 I C A R U S       
- D a n   K r a m e r  b g e i s l e r                                                                                                                                                                                    ��                       �����Oh�� +'��0   p        �      �      �      �      �      �      �   	          
-   ,     8  
-   D     P     X     `     h     �        Scripting with SOF2ICARUS 0        cri      Dan Kramer i       an       Normal m   	   bgeisler r i      3 ei      Microsoft Word 9.0 I@    �Ik    @    ��N��@    d]���         �      0�                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         ��                       ��՜.�� +,��D   ��՜.�� +,��P          h      p      �      �      �      �      �      �      �      �   
-   �      �      �        Raven Software     �     _      ��     �
-	                                     Scripting with SOF2ICARUS            Title       �                8      @            _PID_HLINKS    �  A   |            ~                                f o r c e      a      {                                A      r v    x                                _ S E T _ S E A R C H       /    u                             
-   _ S E T _ T A L K _ T O        
- +    r                                _ S E T _ L O O K _ P A R E N T        | @    o                                _ S E T _ L O O K _ R O O T         )    l                                _ S E T _ L O O K _ T A R G E T        _ o    i                                _ F a c i n g _ a n d _ L o o k i n g      ] U    f                                _ C o m m o n _ A n i m a t i o n s        g t    c                                _ S E T _ H A N D S I G N A L           `                             
-   _ S E T _ A N I M      G n    ]                                _ A n i m a t i o n s      6     Z                                _ H a n d l i n g _ E n e m i e s _ D u r i n g             W                                _ S E T _ G O A L D I S T      y z    T                                _ S E T _ G O A L F L U S H        	     Q                                _ S E T _ G O A L M O D E           N                             
-   _ S E T _ N A V G O A L        u 7    K                                _ S E T _ A R E A G O A L 2             H                                _ S E T _ A R E A G O A L      !     E                                _ G o a l _ R e l a t e d _ S e t      \ e    B                                _ F o l l o w      X b    ?                                _ G u a r d        -      <                             
-   _ S u r r o u n d      &      9                             
-   _ H o l d A r e a      \ u    6                                _ G o a l s             3                                b a s i c      ` t    0                                _ S E T _ H I T L O C      f ~    -                                _ S E T _ E N E M Y        J v    *                                _ A T T A C K      >     '                                _ P A T H      *     $                                _ R U N        >     !                                _ W A L K      T ~                                    _ M o v e T o E n t        0                                     _ M o v e      U t                                    _ T A S K S                                             w h a t        t n                                    _ B a s i c _ C o n c e p t s      n p                                    n p c                                           d e b u g       
-    	                                m i s c                                             b r u s h      	                                     f l o w                                              u s i n g                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       	   
-         
-                                                             !   "   #   $   %   &   '   (   )   *   +   ,   -   .   /   0   1   2   3   4   5   6   7   8   9   :   ;   <   =   >   ?   @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O   P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   _   `   a   b   c   d   e   f   g   h   i   j   k   l   m   n   o   p   q   r   s   t   u   v   w   x   y   z   {   |   }   ~      �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �����   �   �   �   �   �   �   �   �   �����   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   �   ����               ����  	  
-      
-    ����������������  ����������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������R o o t   E n t r y                                              ��������   	     �      F            �UC���  �       D a t a                                                         
- ������������                                    �   �      1 T a b l e                                                          ��������                                    �   a�      W o r d D o c u m e n t                                                ����                                        "P      S u m m a r y I n f o r m a t i o n                           ( ������������                                    �           D o c u m e n t S u m m a r y I n f o r m a t i o n           8    ��������                                              C o m p O b j                                                        ����                                        j       O b j e c t P o o l                                               ������������                    �UC����UC���               ���������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������������� ��
-  ����	     �      F   Microsoft Word Document 
-   MSWordDoc    Word.Document.8 �9�q                                                                                                                                                                                                                                                                                                                                                                                                                                  
