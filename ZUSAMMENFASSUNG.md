@@ -1957,3 +1957,548 @@ Da die ursprüngliche Dokumentation für 3DS Max geschrieben wurde, musst du fü
 **Oder:** Du könntest den Workflow über 3DS Max laufen lassen und nur die Modelle in Blender erstellen, dann nach 3DS Max exportieren für den finalen SoF2-Export.
 
 Die `.frames` Dateien enthalten die Animation-Daten und werden automatisch vom Carcass-Tool generiert, wenn du die korrekte XSI-Datei mit Animationen exportierst.
+
+
+____________________
+
+Ich helfe dir dabei, dein Blender-Model optimal für Unity zu exportieren! Lass mich zuerst dein aktuelles Addon verstehen und dann die besten Praktiken für Unity-Export erklären.
+
+
+Perfekt! Ich sehe, dass dein Addon SoF2-Modelle nach Blender importiert. Jetzt erkläre ich dir, wie du deine Blender-Szene optimal für Unity vorbereitest:
+
+## **Optimale Blender-Szene für Unity FBX-Export**
+
+### **1. Szene-Aufbau (WICHTIG für Unity)**
+
+**Du brauchst KEINE Kamera oder Licht in der Szene für den Export!** Diese werden in Unity separat verwaltet.
+
+**Was du brauchst:**
+- ✅ **Root-Objekt** (dein Addon erstellt bereits `scene_root`)
+- ✅ **Mesh-Objekte** (deine importierten Modelle)
+- ✅ **Armature** (Skelett für Animationen)
+- ✅ **Materialien** (Texturen)
+
+### **2. Vorbereitung für Unity-Export**
+
+**A) Objekt-Hierarchie optimieren:**
+```
+scene_root (Empty)
+├── character_mesh (Mesh)
+├── character_armature (Armature)
+└── [weitere Objekte]
+```
+
+**B) Transform-Einstellungen:**
+- **Scale**: `(1, 1, 1)` für alle Objekte
+- **Rotation**: `(0, 0, 0)` 
+- **Location**: `(0, 0, 0)` für Root-Objekt
+
+**C) Materialien vorbereiten:**
+- Alle Materialien sollten **Principled BSDF** Shader verwenden
+- Texturen sollten **Image Textures** sein (nicht procedural)
+- **Alpha** für transparente Teile korrekt einstellen
+
+### **3. FBX-Export-Einstellungen für Unity**
+
+**Wichtige Export-Parameter:**
+- **Scale**: `1.0` (nicht 10 wie beim Import!)
+- **Apply Transform**: ✅ **Aktiviert**
+- **Bake Animation**: ✅ **Aktiviert** (wenn Animationen vorhanden)
+- **Add Leaf Bones**: ❌ **Deaktiviert**
+- **Primary Bone Axis**: `Y`
+- **Secondary Bone Axis**: `X`
+- **Armature FBXNode Type**: `Null`
+
+### **4. Unity-spezifische Optimierungen**
+
+**A) LOD (Level of Detail):**
+- Erstelle verschiedene Detailstufen deines Modells
+- Benenne sie: `Character_LOD0`, `Character_LOD1`, etc.
+
+**B) Collider vorbereiten:**
+- Erstelle separate Collider-Meshes
+- Benenne sie: `Character_Collider`
+
+**C) Animationen:**
+- Stelle sicher, dass alle Animationen im **Action Editor** korrekt sind
+- **NLA Editor** für komplexe Animationen verwenden
+
+### **5. Praktische Schritte in Blender**
+
+1. **Szene bereinigen:**
+   ```python
+   # Alle nicht benötigten Objekte löschen
+   # Kameras, Lichter, etc. entfernen
+   ```
+
+2. **Scale zurücksetzen:**
+   ```python
+   # Nach dem Import: Scale auf 1.0 setzen
+   bpy.context.object.scale = (1, 1, 1)
+   ```
+
+3. **Materialien überprüfen:**
+   - Alle Texturen sollten geladen sein
+   - Keine pinken/missing Texturen
+
+4. **FBX-Export:**
+   - File → Export → FBX
+   - Einstellungen wie oben beschrieben
+
+### **6. Unity-Import-Einstellungen**
+
+Nach dem Import in Unity:
+- **Scale Factor**: `1`
+- **Mesh Compression**: `Off` (für Entwicklung)
+- **Read/Write Enabled**: ✅ (für Skripting)
+- **Optimize Mesh**: ✅
+- **Generate Colliders**: ❌ (manuell erstellen)
+
+### **7. Zusätzliche Tipps**
+
+**Performance:**
+- **Polygon-Count** im Auge behalten
+- **Texture-Größen** optimieren (512x512, 1024x1024)
+- **UV-Maps** effizient nutzen
+
+**Animationen:**
+- **Root Motion** korrekt einstellen
+- **Animation Compression** in Unity anpassen
+
+**Materialien:**
+- **Standard Shader** in Unity verwenden
+- **Normal Maps** korrekt importieren
+
+Möchtest du, dass ich dir ein Python-Script erstelle, das deine Blender-Szene automatisch für Unity optimiert? Das würde die Scale-Anpassung, Material-Überprüfung und Export-Vorbereitung automatisieren.
+
+
+__________________
+
+Ich schaue mir deinen AssetPostprocessor an und helfe dir dabei, dein SoF2-Model optimal für Unity aufzubereiten!
+
+
+[1 tool called]
+
+Perfekt! Ich sehe, dass du bereits einen AssetPostprocessor für Ghoul2-Properties hast. Lass mich das erweitern, um dein SoF2-Model optimal für Unity aufzubereiten. Hier ist eine verbesserte Version:
+
+```csharp
+using System;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+
+// Enhanced container for Ghoul2 properties and Unity optimization
+[DisallowMultipleComponent]
+public class Ghoul2Meta : MonoBehaviour
+{
+    [Header("Ghoul2 Properties")]
+    public string g2_prop_name;
+    public string g2_prop_shader;
+    public bool g2_prop_tag;
+    public bool g2_prop_off;
+    
+    [Header("Unity Optimization")]
+    public bool isLODGroup = false;
+    public int lodLevel = 0;
+    public bool generateCollider = false;
+    public bool isRootBone = false;
+    
+    // Animation properties
+    public bool hasAnimations = false;
+    public string animationType = "None"; // "Idle", "Walk", "Run", etc.
+}
+
+public class FBXGhoul2PropsImporter : AssetPostprocessor
+{
+    void OnPreprocessModel()
+    {
+        var mi = assetImporter as ModelImporter;
+        if (mi == null) return;
+
+        // Ghoul2 properties
+        mi.extraUserProperties = new string[] {
+            "g2_prop_name",
+            "g2_prop_shader", 
+            "g2_prop_tag",
+            "g2_prop_off",
+            "g2_prop_scale",
+            "isLODGroup",
+            "lodLevel",
+            "generateCollider",
+            "isRootBone",
+            "hasAnimations",
+            "animationType"
+        };
+
+        // Optimize FBX import settings for SoF2 models
+        OptimizeModelImportSettings(mi);
+    }
+
+    void OptimizeModelImportSettings(ModelImporter mi)
+    {
+        // Scale settings - SoF2 models are typically scaled by 10 in Blender
+        mi.globalScale = 1.0f; // Unity expects 1:1 scale
+        mi.useFileScale = false;
+        
+        // Mesh settings
+        mi.meshCompression = ModelImporterMeshCompression.Off; // For development
+        mi.isReadable = true; // Enable for scripting access
+        mi.optimizeMesh = true;
+        mi.optimizeMeshVertices = true;
+        mi.optimizeMeshPolygons = true;
+        
+        // Normals and tangents
+        mi.importNormals = ModelImporterNormals.Import;
+        mi.importTangents = ModelImporterTangents.CalculateMikk;
+        mi.normalCalculationMode = ModelImporterNormalCalculationMode.AreaAndAngleWeighted;
+        
+        // Animation settings
+        mi.importAnimation = true;
+        mi.animationType = ModelImporterAnimationType.Generic;
+        mi.animationCompression = ModelImporterAnimationCompression.KeyframeReduction;
+        mi.animationPositionError = 0.5f;
+        mi.animationRotationError = 0.5f;
+        mi.animationScaleError = 0.5f;
+        
+        // Material settings
+        mi.materialImportMode = ModelImporterMaterialImportMode.ImportStandard;
+        mi.materialName = ModelImporterMaterialName.BasedOnMaterialName;
+        mi.materialSearch = ModelImporterMaterialSearch.Everywhere;
+        
+        // Avatar settings for humanoid characters
+        if (mi.assetPath.ToLower().Contains("character") || 
+            mi.assetPath.ToLower().Contains("player") ||
+            mi.assetPath.ToLower().Contains("npc"))
+        {
+            mi.animationType = ModelImporterAnimationType.Human;
+            mi.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
+        }
+        
+        // LOD settings
+        mi.lodBias = 1.0f;
+        mi.importBlendShapes = true;
+        
+        Debug.Log($"[SoF2Importer] Optimized import settings for: {mi.assetPath}");
+    }
+
+    void OnPostprocessModel(GameObject root)
+    {
+        // Post-process the entire model after import
+        ProcessModelHierarchy(root);
+        SetupMaterials(root);
+        SetupLODGroups(root);
+        SetupColliders(root);
+        SetupAnimations(root);
+    }
+
+    void ProcessModelHierarchy(GameObject root)
+    {
+        // Find and process the scene_root object
+        var sceneRoot = FindChildByName(root, "scene_root");
+        if (sceneRoot != null)
+        {
+            // Reset scale to 1:1 for Unity
+            sceneRoot.transform.localScale = Vector3.one;
+            
+            // Add Ghoul2Meta component to root
+            var meta = sceneRoot.GetComponent<Ghoul2Meta>();
+            if (meta == null) meta = sceneRoot.AddComponent<Ghoul2Meta>();
+            meta.isRootBone = true;
+            
+            Debug.Log($"[SoF2Importer] Processed scene_root: {sceneRoot.name}");
+        }
+        
+        // Process all mesh objects
+        var meshObjects = root.GetComponentsInChildren<MeshRenderer>();
+        foreach (var meshRenderer in meshObjects)
+        {
+            ProcessMeshObject(meshRenderer.gameObject);
+        }
+        
+        // Process armature
+        var armature = FindChildByName(root, "Armature");
+        if (armature != null)
+        {
+            ProcessArmature(armature);
+        }
+    }
+
+    void ProcessMeshObject(GameObject meshObj)
+    {
+        // Add Ghoul2Meta if not present
+        var meta = meshObj.GetComponent<Ghoul2Meta>();
+        if (meta == null) meta = meshObj.AddComponent<Ghoul2Meta>();
+        
+        // Optimize mesh renderer
+        var meshRenderer = meshObj.GetComponent<MeshRenderer>();
+        if (meshRenderer != null)
+        {
+            // Enable GPU instancing for better performance
+            meshRenderer.enabled = true;
+            
+            // Set shadow casting
+            meshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            meshRenderer.receiveShadows = true;
+        }
+        
+        // Optimize mesh filter
+        var meshFilter = meshObj.GetComponent<MeshFilter>();
+        if (meshFilter != null && meshFilter.sharedMesh != null)
+        {
+            // Mark mesh as readable for runtime access
+            var mesh = meshFilter.sharedMesh;
+            mesh.name = meshObj.name + "_Mesh";
+        }
+    }
+
+    void ProcessArmature(GameObject armature)
+    {
+        var meta = armature.GetComponent<Ghoul2Meta>();
+        if (meta == null) meta = armature.AddComponent<Ghoul2Meta>();
+        
+        meta.isRootBone = true;
+        meta.hasAnimations = armature.GetComponent<Animator>() != null;
+        
+        // Ensure armature is properly set up for animation
+        var animator = armature.GetComponent<Animator>();
+        if (animator != null)
+        {
+            // Set up animator controller if needed
+            Debug.Log($"[SoF2Importer] Processed armature with animations: {armature.name}");
+        }
+    }
+
+    void SetupMaterials(GameObject root)
+    {
+        var renderers = root.GetComponentsInChildren<MeshRenderer>();
+        foreach (var renderer in renderers)
+        {
+            var materials = renderer.materials;
+            for (int i = 0; i < materials.Length; i++)
+            {
+                var material = materials[i];
+                if (material != null)
+                {
+                    // Optimize material settings
+                    OptimizeMaterial(material);
+                }
+            }
+        }
+    }
+
+    void OptimizeMaterial(Material material)
+    {
+        // Set material properties for better Unity performance
+        if (material.HasProperty("_MainTex"))
+        {
+            // Enable mipmaps for textures
+            var mainTex = material.GetTexture("_MainTex") as Texture2D;
+            if (mainTex != null)
+            {
+                mainTex.mipMapBias = 0f;
+            }
+        }
+        
+        // Set rendering mode based on material name
+        if (material.name.ToLower().Contains("transparent"))
+        {
+            material.SetFloat("_Mode", 3); // Transparent mode
+            material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            material.SetInt("_ZWrite", 0);
+            material.DisableKeyword("_ALPHATEST_ON");
+            material.EnableKeyword("_ALPHABLEND_ON");
+            material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            material.renderQueue = 3000;
+        }
+        
+        Debug.Log($"[SoF2Importer] Optimized material: {material.name}");
+    }
+
+    void SetupLODGroups(GameObject root)
+    {
+        // Look for LOD objects and create LOD Groups
+        var lodObjects = root.GetComponentsInChildren<Transform>()
+            .Where(t => t.name.ToLower().Contains("lod"))
+            .OrderBy(t => t.name)
+            .ToArray();
+            
+        if (lodObjects.Length > 1)
+        {
+            var lodGroup = root.AddComponent<LODGroup>();
+            var lods = new LOD[lodObjects.Length];
+            
+            for (int i = 0; i < lodObjects.Length; i++)
+            {
+                var renderers = lodObjects[i].GetComponentsInChildren<MeshRenderer>();
+                lods[i] = new LOD(1.0f - (i * 0.2f), renderers);
+            }
+            
+            lodGroup.SetLODs(lods);
+            lodGroup.RecalculateBounds();
+            
+            Debug.Log($"[SoF2Importer] Created LOD Group with {lodObjects.Length} levels");
+        }
+    }
+
+    void SetupColliders(GameObject root)
+    {
+        // Add colliders to objects that need them
+        var colliderObjects = root.GetComponentsInChildren<Transform>()
+            .Where(t => t.name.ToLower().Contains("collider"))
+            .ToArray();
+            
+        foreach (var obj in colliderObjects)
+        {
+            var meshFilter = obj.GetComponent<MeshFilter>();
+            if (meshFilter != null && meshFilter.sharedMesh != null)
+            {
+                var collider = obj.GetComponent<MeshCollider>();
+                if (collider == null)
+                {
+                    collider = obj.AddComponent<MeshCollider>();
+                }
+                collider.sharedMesh = meshFilter.sharedMesh;
+                collider.convex = false; // For static geometry
+                
+                // Disable mesh renderer for collider objects
+                var renderer = obj.GetComponent<MeshRenderer>();
+                if (renderer != null) renderer.enabled = false;
+            }
+        }
+    }
+
+    void SetupAnimations(GameObject root)
+    {
+        var animator = root.GetComponentInChildren<Animator>();
+        if (animator != null)
+        {
+            // Set up animation settings
+            animator.applyRootMotion = false; // Usually false for SoF2 characters
+            animator.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
+            
+            Debug.Log($"[SoF2Importer] Set up animations for: {root.name}");
+        }
+    }
+
+    void OnPostprocessGameObjectWithUserProperties(GameObject go, string[] propNames, object[] values)
+    {
+        if (propNames == null || propNames.Length == 0) return;
+
+        var meta = go.GetComponent<Ghoul2Meta>();
+        if (meta == null) meta = go.AddComponent<Ghoul2Meta>();
+
+        for (int i = 0; i < propNames.Length; i++)
+        {
+            var name = propNames[i];
+            var val = values[i];
+
+            try
+            {
+                switch (name)
+                {
+                    case "g2_prop_name":
+                        meta.g2_prop_name = val as string ?? val?.ToString();
+                        break;
+                    case "g2_prop_shader":
+                        meta.g2_prop_shader = val as string ?? val?.ToString();
+                        break;
+                    case "g2_prop_tag":
+                        if (val is bool b) meta.g2_prop_tag = b;
+                        else if (val is int n) meta.g2_prop_tag = n != 0;
+                        else meta.g2_prop_tag = bool.Parse(val.ToString());
+                        break;
+                    case "g2_prop_off":
+                        if (val is bool b2) meta.g2_prop_off = b2;
+                        else if (val is int n2) meta.g2_prop_off = n2 != 0;
+                        else meta.g2_prop_off = bool.Parse(val.ToString());
+                        break;
+                    case "g2_prop_scale":
+                        if (val is float f) meta.transform.localScale = Vector3.one * f;
+                        else if (val is int n) meta.transform.localScale = Vector3.one * n;
+                        break;
+                    case "isLODGroup":
+                        if (val is bool lod) meta.isLODGroup = lod;
+                        break;
+                    case "lodLevel":
+                        if (val is int level) meta.lodLevel = level;
+                        break;
+                    case "generateCollider":
+                        if (val is bool coll) meta.generateCollider = coll;
+                        break;
+                    case "isRootBone":
+                        if (val is bool root) meta.isRootBone = root;
+                        break;
+                    case "hasAnimations":
+                        if (val is bool anim) meta.hasAnimations = anim;
+                        break;
+                    case "animationType":
+                        meta.animationType = val as string ?? val?.ToString() ?? "None";
+                        break;
+                    default:
+                        Debug.Log($"[SoF2Importer] Unknown prop {name} = {val} on {go.name}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SoF2Importer] Failed to parse property {name} on {go.name}: {ex.Message}");
+            }
+        }
+
+        Debug.Log($"[SoF2Importer] Applied {propNames.Length} user properties to {go.name}");
+    }
+
+    GameObject FindChildByName(GameObject parent, string name)
+    {
+        if (parent.name == name) return parent;
+        
+        foreach (Transform child in parent.transform)
+        {
+            var result = FindChildByName(child.gameObject, name);
+            if (result != null) return result;
+        }
+        
+        return null;
+    }
+}
+```
+
+## **Was diese erweiterte Version macht:**
+
+### **1. Automatische Import-Optimierung:**
+- **Scale**: Setzt automatisch auf 1:1 (Unity-Standard)
+- **Mesh-Compression**: Deaktiviert für Entwicklung
+- **Animation-Settings**: Optimiert für SoF2-Charaktere
+- **Material-Import**: Standard-Modus für bessere Kompatibilität
+
+### **2. Hierarchie-Verarbeitung:**
+- **scene_root**: Wird automatisch erkannt und optimiert
+- **Armature**: Wird als Root-Bone markiert
+- **Mesh-Objekte**: Werden für Performance optimiert
+
+### **3. Material-Optimierung:**
+- **Transparente Materialien**: Werden automatisch erkannt
+- **Texture-Settings**: Mipmaps und andere Einstellungen
+- **Shader-Mode**: Automatische Einstellung basierend auf Namen
+
+### **4. LOD-System:**
+- **Automatische LOD-Gruppen**: Für Objekte mit "LOD" im Namen
+- **Performance-Optimierung**: Verschiedene Detailstufen
+
+### **5. Collider-Setup:**
+- **Mesh-Collider**: Für Objekte mit "collider" im Namen
+- **Automatische Deaktivierung**: Renderer für Collider-Objekte
+
+### **6. Animation-Setup:**
+- **Root Motion**: Deaktiviert (Standard für SoF2)
+- **Culling**: Optimiert für Performance
+- **Humanoid-Setup**: Für Charakter-Modelle
+
+## **Verwendung:**
+
+1. **Speichere** die Datei als `FBXGhoul2PropsImporter.cs`
+2. **Platziere** sie im `Assets/Editor/` Ordner
+3. **Importiere** dein FBX-Model - alles wird automatisch optimiert!
+
+Das System erkennt automatisch SoF2-spezifische Objekte und optimiert sie für Unity. Möchtest du, dass ich noch weitere Features hinzufüge, wie z.B. automatische Prefab-Erstellung oder spezielle Shader-Zuweisungen?

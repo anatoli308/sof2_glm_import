@@ -89,7 +89,7 @@ def get_shaders_data(basepath: str, filepath: str) -> List[Tuple[str, str, str]]
     _cached_shader_items = items
     _cached_shader_data = shader_data
 
-    return items
+    return items, shader_data
 
 
 def get_shaders_folder_data(basepath: str, filepath: str) -> List[Tuple[str, str, str]]:

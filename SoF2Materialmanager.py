@@ -44,7 +44,7 @@ class MaterialManager:
             for grp in mat.get("groups", []):
                 if (
                     "texture1" in grp
-                ):  # TODO Vermutlich mehr als texture1 - textureX möglich erweitern!
+                ):  # TODO Mehr als texture1 - textureX möglich erweitern!
                     tex = grp["texture1"].strip('"')
                     if log_level == "DEBUG":
                         print(f"Mapping material '{mat_name}' to texture '{tex}'")
@@ -61,6 +61,7 @@ class MaterialManager:
         self.initialized = True
         return True, NoError
 
+    #shader_def wird derzeit nicht verwendet!
     def getMaterial(self, name, bsShader, shader_def: str = ""):
         """
         Lädt ein Material basierend auf dem G2/G3 Shader.
@@ -304,6 +305,13 @@ class MaterialManager:
         # **UNITY OPTIMIZATION: Set material properties for Unity export**
         mat.use_fake_user = True  # Prevent material deletion
         mat.blend_method = "OPAQUE"  # Unity standard blend method
+
+        # **SOF2 SHADER SUPPORT: Handle cull disable (two-sided materials)**
+        if shader_def and "cull" in shader_def.lower() and "disable" in shader_def.lower():
+            mat.use_backface_culling = False
+            mat["unity_two_sided"] = True
+            if log_level == "DEBUG":
+                print(f"Material '{shader}' set to two-sided (cull disable)")
 
         # **UNITY OPTIMIZATION: Add custom properties for Unity**
         mat["unity_export_ready"] = True

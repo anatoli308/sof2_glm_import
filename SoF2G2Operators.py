@@ -16,8 +16,7 @@ reload_modules(
 
 import os  # noqa: E402
 import bpy  # noqa: E402  # pyright: ignore[reportMissingImports]
-from typing import Any, Dict, List, Optional, Tuple, cast  # noqa: E402
-from copy import deepcopy  # noqa: E402
+from typing import cast  # noqa: E402
 
 from .SoF2G2Constants import SkeletonFixes  # noqa: E402
 
@@ -28,12 +27,7 @@ from . import SoF2G2DataCache as DataCache  # noqa: E402
 from . import SoF2G2Scene  # noqa: E402
 from . import SoF2G2GLA  # noqa: E402, F811
 from . import SoF2Filesystem  # noqa: E402
-from . import skl_parser  # noqa: E402
 from . import frames_parser  # noqa: E402
-from .SoF2G2PathMapper import map_frames_into_skl  # noqa: E402
-
-
-# Old mapping functions removed - now using SoF2G2PathMapper
 
 
 def find_skin_data_by_file_value(skin_data: dict, file_name: str):
@@ -176,6 +170,9 @@ class GLMImport(bpy.types.Operator):
             layout.prop(self, "npc_search", text="", icon="VIEWZOOM")
 
             items = DataCache.get_npc_enum_items(self.basepath)
+            items.sort(
+                key=lambda x: x[0]
+            )  # Sort by first tuple element (identifier) ascending
             search = self.npc_search.strip().lower()
             shown = 0
             max_show = 10  # Limit, damit das Panel nicht explodiert
@@ -224,10 +221,12 @@ class GLMImport(bpy.types.Operator):
 
                 # restliche Optionen
                 layout.prop(self, "scale")
-                layout.prop(self, "skeletonFixes")
                 layout.prop(self, "loadAnimations")
-                layout.prop(self, "startFrame")
-                layout.prop(self, "numFrames")
+                if self.loadAnimations == "RANGE":
+                    layout.prop(self, "startFrame")
+                    layout.prop(self, "numFrames")
+                layout.prop(self, "skeletonFixes")
+
             else:
                 row = layout.row()
                 row.alert = True
@@ -258,31 +257,21 @@ class GLMImport(bpy.types.Operator):
 
         if character_template:
             print(f"Found character template for {key}:")
+            parent_template = character_template.get("group_info", {}).get(
+                "ParentTemplate", None
+            )
+            if parent_template:
+                print(
+                    f"NPC got a Parent NPC template #TODO load it later: {parent_template}"
+                )
+
             character_model_path = character_template.get("char_template", {}).get(
                 "Model", None
             )
-
-            # if true means is singleplayer!
-            has_deathmatch_flag = character_template.get("char_template", {}).get(
-                "Deathmatch", None
+            # load all g2skin files for the model for example "average_sleeves.glm"
+            _, all_g2skin_files_data = DataCache.get_skins(
+                getattr(self, "basepath", ""), character_model_path
             )
-
-            character_skeleton_name = character_template.get("group_info", {}).get(
-                "Skeleton", None
-            )
-            data_frames_file_path = os.path.normpath(
-                self.basepath
-                + "/skeletons/"
-                + os.path.splitext(character_skeleton_name)[0]
-                + (".frames" if has_deathmatch_flag else "_mp.frames")
-            )
-            print(f"Loading frames file: {data_frames_file_path}")
-            text = open(
-                data_frames_file_path,
-                "r",
-                encoding="utf-8",
-            ).read()
-            data_frames_file = frames_parser.parse_frames(text)
 
             character_template_skin_files = character_template.get(
                 "char_template", {}
@@ -298,32 +287,55 @@ class GLMImport(bpy.types.Operator):
                 )
             else:
                 print(
-                    "skin_files type ist unbekannt:",
+                    "In deiner .npc Datei sind die Skin Einträge fehlerhaft (wrong type):",
                     type(character_template_skin_files),
                 )
                 return {"CANCELLED"}
 
-            _, all_g2skin_files_data = DataCache.get_skins(
-                getattr(self, "basepath", ""), character_model_path
-            )
-
+            g2_skin_file_name = character_template_skin_information.get("File")
+            print(f"Loading .g2skin file: {g2_skin_file_name}.g2skin")
             selected_g2skin_data = find_skin_data_by_file_value(
-                all_g2skin_files_data, character_template_skin_information.get("File")
+                all_g2skin_files_data, g2_skin_file_name
             )
-
-            parent_template = character_template.get("group_info", {}).get(
-                "ParentTemplate", None
-            )
-            if parent_template:
-                print(f"NPC got a Parent NPC template: {parent_template}")
-
-            # TODO add a checkbox to proceed without g2skins, BUT everything probably will be pink!
+            # TODO add a checkbox to proceed without g2skins, BUT everything probably will be pink! Need refactoring for this!
             if not selected_g2skin_data:
                 self.report(
                     {"ERROR"},
                     "No g2skin file found! Check your loaded .npc file definition if you load one.",
                 )
                 return {"CANCELLED"}
+
+            # TODO Anatoli - wir nehmen derzeit nur das erste ich denke es kann auch nicht mehr geben... nachprüfen!
+            loaded_model_from_g2 = (
+                selected_g2skin_data.get("prefs", {}).get("models", {}).get("1", None)
+            )
+            if not loaded_model_from_g2:
+                print(f"No model found in g2skin: {g2_skin_file_name}.g2skin")
+                return {"CANCELLED"}
+
+            print(f"Loading .shader file: {loaded_model_from_g2}.shader")
+            _, my_data_test = DataCache.get_shaders_data(
+                self.basepath, loaded_model_from_g2
+            )
+
+            # if true means is singleplayer! else multiplayer
+            has_deathmatch_flag = character_template.get("char_template", {}).get(
+                "Deathmatch", None
+            )
+
+            data_frames_file_path = os.path.normpath(
+                self.basepath
+                + "/skeletons/"
+                + loaded_model_from_g2
+                + (".frames" if has_deathmatch_flag else "_mp.frames")
+            )
+            print(f"Loading .frames file: {data_frames_file_path}")
+            text = open(
+                data_frames_file_path,
+                "r",
+                encoding="utf-8",
+            ).read()
+            data_frames_file = frames_parser.parse_frames(text)
 
             # de-percentagionise scale
             scale = self.scale / 100
@@ -337,6 +349,7 @@ class GLMImport(bpy.types.Operator):
                 self.report({"ERROR"}, message)
                 return {"FINISHED"}
 
+            # _mp gla might be trash on knees we see. the singleplayer skeleton seems cleaner...
             glafile = scene.getRequestedGLA()
             if not has_deathmatch_flag:
                 glafile = glafile + "_mp"

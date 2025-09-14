@@ -889,12 +889,14 @@ class MdxmSurface:
             [triangle.indices for triangle in self.triangles],
         )
 
-        material = data.materialManager.getMaterial(name, surfaceData.shader)
-        if material is None:
-            material = bpy.data.materials.new(
-                name=SoF2Stringhelper.decode(surfaceData.shader)
-            )
-        mesh.materials.append(material)
+        # Nur Material hinzufügen, wenn es kein Tag ist
+        if not (surfaceData.flags & SoF2G2Constants.SURFACEFLAG_TAG) and "stupidtriangle" not in name:
+            material = data.materialManager.getMaterial(name, surfaceData.shader)
+            if material is None:
+                material = bpy.data.materials.new(
+                    name=SoF2Stringhelper.decode(surfaceData.shader)
+                )
+            mesh.materials.append(material)
 
         # this is probably actually bullshit, since vertex order is what determines a tag, not index order! I think.
         """
