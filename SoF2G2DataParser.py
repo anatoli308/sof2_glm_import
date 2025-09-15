@@ -316,6 +316,8 @@ def _parse_block_content(block_text: str) -> Dict[str, Any]:
             _store_prop(res["props"], key, value)
             i = next_nl_idx + 1 if nl != -1 else L
             continue
+    
+    res["tags"] = [tag for tag in res["tags"] if tag != ""]
 
     return res
 

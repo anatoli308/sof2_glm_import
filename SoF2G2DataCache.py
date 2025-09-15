@@ -56,12 +56,12 @@ def get_shaders_data(basepath: str, filepath: str) -> List[Tuple[str, str, str]]
     )
 
     if not selected_shader:
-        return [("None", "None", "No shader selected")]
+        return [("None", "None", "No shader selected")], None
 
     selected_shader = selected_shader.strip()
 
     if _cached_shader_query == selected_shader and _cached_shader_items:
-        return _cached_shader_items
+        return _cached_shader_items, _cached_shader_data
 
     shader_dir = os.path.join(basepath or "", "shaders")
     filename = f"{selected_shader}.shader"
@@ -245,6 +245,27 @@ def get_skins(
     _cached_skin_data = skin_data
     print("Available .g2skin files:", len(items))
     return items, skin_data
+
+def get_weapon_enum_items(basepath):
+    """
+    Gibt eine Liste von EnumItems für Waffen zurück: (identifier, name, description)
+    identifier = Dateiname (ohne Extension)
+    name = Dateiname (ohne Extension)
+    description = Dateiname (ohne Extension)
+    """
+    weapon_dir = os.path.join(basepath, "models", "weapons")
+    items = []
+
+    if os.path.isdir(weapon_dir):
+        for fn in sorted(os.listdir(weapon_dir)):
+            if fn.lower().endswith(".glm"):
+                weapon_name = os.path.splitext(fn)[0]
+                items.append((weapon_name, weapon_name, f"Weapon: {weapon_name}"))
+
+    if not items:
+        items.append(("None", "None", "No weapon .glm files found"))
+
+    return items
 
 
 def get_npc_enum_items(basepath):

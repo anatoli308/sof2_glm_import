@@ -95,3 +95,6 @@ class G2PropertiesPanel(bpy.types.Panel):
             else:
                 row = layout.row()
                 row.operator("object.add_g2_properties")
+
+
+ 

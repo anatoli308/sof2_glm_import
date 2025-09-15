@@ -874,7 +874,9 @@ class MdxmSurface:
         assert file.tell() == startPos + self.ofsEnd
 
     # returns the created object
-    def saveToBlender(self, data: ImportMetadata, lodLevel: int, selected_skin_data: dict):
+    def saveToBlender(
+        self, data: ImportMetadata, lodLevel: int, selected_skin_data: dict
+    ):
         #  retrieve metadata (same across LODs)
         surfaceData = data.surfaceDataCollection.surfaces[self.index]
         # blender won't let us create multiple things with the same name, so we add a LOD-suffix
@@ -890,8 +892,13 @@ class MdxmSurface:
         )
 
         # Nur Material hinzufügen, wenn es kein Tag ist
-        if not (surfaceData.flags & SoF2G2Constants.SURFACEFLAG_TAG) and "stupidtriangle" not in name:
-            material = data.materialManager.getMaterial(name, surfaceData.shader)
+        if (
+            not (surfaceData.flags & SoF2G2Constants.SURFACEFLAG_TAG)
+            and "stupidtriangle" not in name
+        ):
+            material = data.materialManager.getMaterial(
+                name, surfaceData.shader, "", selected_skin_data
+            )
             if material is None:
                 material = bpy.data.materials.new(
                     name=SoF2Stringhelper.decode(surfaceData.shader)
@@ -1004,8 +1011,8 @@ class MdxmSurface:
         obj["m_bbox_size_z"] = bbox[6][2] - bbox[0][2]
         """
 
-        #selected_g2skin_file_data shader über g2skin laden / erstellen
-        #TODO shader für model in g2skin laden und erstellen / einsetzen
+        # selected_g2skin_file_data shader über g2skin laden / erstellen
+        # TODO shader für model in g2skin laden und erstellen / einsetzen
 
         # Weitere nützliche Properties
         obj["m_is_visible"] = not obj["g2_prop_off"]
@@ -1147,7 +1154,9 @@ class MdxmLOD:
             ofsEnd=-1,  # FIXME: avoid this invalid state
         ), NoError
 
-    def saveToBlender(self, data: ImportMetadata, root: bpy.types.Object, selected_skin_data: dict):
+    def saveToBlender(
+        self, data: ImportMetadata, root: bpy.types.Object, selected_skin_data: dict
+    ):
         # 1st pass: create objects
         objects = []
         for surface in self.surfaces:

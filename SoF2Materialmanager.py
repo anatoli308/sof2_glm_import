@@ -61,8 +61,10 @@ class MaterialManager:
         self.initialized = True
         return True, NoError
 
-    #shader_def wird derzeit nicht verwendet!
-    def getMaterial(self, name, bsShader, shader_def: str = ""):
+    # shader_def wird derzeit nicht verwendet!
+    def getMaterial(
+        self, name, bsShader, shader_def: str = "", selected_skin_data: dict = {}
+    ):
         """
         Lädt ein Material basierend auf dem G2/G3 Shader.
         shader_def: optionaler Text der Shader-Definition (.shader) - hilft, map-Einträge zu finden.
@@ -307,7 +309,11 @@ class MaterialManager:
         mat.blend_method = "OPAQUE"  # Unity standard blend method
 
         # **SOF2 SHADER SUPPORT: Handle cull disable (two-sided materials)**
-        if shader_def and "cull" in shader_def.lower() and "disable" in shader_def.lower():
+        if (
+            shader_def
+            and "cull" in shader_def.lower()
+            and "disable" in shader_def.lower()
+        ):
             mat.use_backface_culling = False
             mat["unity_two_sided"] = True
             if log_level == "DEBUG":
