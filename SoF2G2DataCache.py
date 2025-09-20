@@ -2,6 +2,7 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 from .SoF2G2DataParser import parse_shader_file, parse_g2skin_to_json
 from .SoF2G2DataParser import get_npcs_folder_data
+from .wpn_parser import parse_wpn_file, parse_inview_file
 
 log_level = os.getenv("LOG_LEVEL", "INFO")
 
@@ -249,23 +250,74 @@ def get_skins(
 def get_weapon_enum_items(basepath):
     """
     Gibt eine Liste von EnumItems für Waffen zurück: (identifier, name, description)
-    identifier = Dateiname (ohne Extension)
-    name = Dateiname (ohne Extension)
-    description = Dateiname (ohne Extension)
+    NEU: Statt .glm-Dateien zu listen, wird eine Mock-Parsing von ext_data/SOF2.wpn genutzt.
+    Zusätzlich wird die inview Datei geladen und die entsprechenden Einträge den Waffen zugewiesen.
     """
-    weapon_dir = os.path.join(basepath, "models", "weapons")
     items = []
+    wpn_path = os.path.join(basepath, "ext_data", "SOF2.wpn")
+    weapons = []
 
-    if os.path.isdir(weapon_dir):
-        for fn in sorted(os.listdir(weapon_dir)):
-            if fn.lower().endswith(".glm"):
-                weapon_name = os.path.splitext(fn)[0]
-                items.append((weapon_name, weapon_name, f"Weapon: {weapon_name}"))
+    if os.path.isfile(wpn_path):
+        try:
+            text = open(wpn_path, "r", encoding="utf-8", errors="ignore").read()
+            weapons = parse_wpn_file(text)
+
+            # Extract weapon names from parsed data
+            for weapon in weapons:
+                name = weapon.get('name', '')
+                if name:
+                    display_name = weapon.get('displayName', name)
+                    model = weapon.get('model', '')
+                    # Build description
+                    desc_parts = []
+                    if display_name != name:
+                        desc_parts.append(f"{display_name}")
+                    if model:
+                        desc_parts.append(f"{model}")
+                    
+                    description = " | ".join(desc_parts)
+                    items.append((display_name, name, description))
+            
+        except Exception as e:
+            print(f"Error reading/parsing SOF2.wpn: {e}")
+
+    # Load and parse inview file
+    inview_path = os.path.join(basepath, "inview", "SOF2.inview")
+    inview_weapons = []
+    
+    if os.path.isfile(inview_path):
+        try:
+            inview_text = open(inview_path, "r", encoding="utf-8", errors="ignore").read()
+            inview_weapons = parse_inview_file(inview_text)
+            print(f"Loaded {len(inview_weapons)} weapons from inview file")
+        except Exception as e:
+            print(f"Error reading/parsing SOF2.inview: {e}")
+    else:
+        print(f"Inview file not found: {inview_path}")
+
+    # Match inview entries to weapons by name and assign inview data
+    if weapons and inview_weapons:
+        # Create a lookup dictionary for inview weapons by name
+        inview_lookup = {}
+        for inview_weapon in inview_weapons:
+            inview_name = inview_weapon.get('name', '')
+            if inview_name:
+                inview_lookup[inview_name] = inview_weapon
+        
+        # Assign inview data to matching weapons
+        for weapon in weapons:
+            weapon_name = weapon.get('name', '')
+            if weapon_name in inview_lookup:
+                weapon['inview'] = inview_lookup[weapon_name]
+                if log_level == "DEBUG":
+                    print(f"Assigned inview data to weapon: {weapon_name}")
 
     if not items:
-        items.append(("None", "None", "No weapon .glm files found"))
+        items.append(("None", "None", "No weapons found"))
 
-    return items
+    items.sort(key=lambda x: x[1])
+    
+    return items, weapons
 
 
 def get_npc_enum_items(basepath):

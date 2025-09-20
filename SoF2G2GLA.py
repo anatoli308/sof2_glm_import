@@ -785,7 +785,7 @@ class MdxaAnimation:
                         clip_timing_stats['mode_switches'] += mode_switch_time
                 
             # **Restore original FPS and set scene back to first frame**
-            scene.render.fps = 24  # Restore default FPS #TODO default FPS Anatoli wechselbar machen??
+            scene.render.fps = 20  # Restore default FPS #TODO default FPS Anatoli wechselbar machen??
             scene.frame_current = 0
             
         else:

@@ -27,7 +27,7 @@ def draw_glm_import_panel(layout, operator):
             )  # Sort by first tuple element (identifier) ascending
             search = operator.npc_search.strip().lower()
             shown = 0
-            max_show = 10  # Limit, damit das Panel nicht explodiert
+            max_show = 30  # Limit, damit das Panel nicht explodiert
 
             for ident, name, desc in items:
                 if search and search not in name.lower() and search not in desc.lower():

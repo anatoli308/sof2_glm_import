@@ -32,10 +32,10 @@ class MaterialManager:
         self.skin = {}
 
         # sicherstellen, dass wir Daten haben
-        if not selected_g2skin_data or "materials" not in selected_g2skin_data:
-            return False, ErrorMessage("Kein gültiges g2skin-JSON übergeben")
-
-        for mat in selected_g2skin_data.get("materials", []):
+        #if not selected_g2skin_data or "materials" not in selected_g2skin_data:
+        #    return False, ErrorMessage("Kein gültiges g2skin-JSON übergeben")
+        materials = selected_g2skin_data.get("materials", [])
+        for mat in materials:
             mat_name = mat.get("name")
             if not mat_name:
                 continue

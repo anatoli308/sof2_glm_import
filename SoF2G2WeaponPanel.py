@@ -5,7 +5,7 @@ def draw_weapon_import_panel(layout, operator):
     """Draw the Weapon import panel UI"""
     layout.prop(operator, "weapon_search", text="", icon="VIEWZOOM")
 
-    items = DataCache.get_weapon_enum_items(operator.basepath)
+    items, _ = DataCache.get_weapon_enum_items(operator.basepath)
     items.sort(key=lambda x: x[0])  # Sort by first tuple element (identifier) ascending
     search = operator.weapon_search.strip().lower()
     shown = 0

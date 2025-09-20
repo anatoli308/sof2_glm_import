@@ -21,5 +21,5 @@ def handle_load_glm_file(op):
     print(f"You selected file: {selected_glm_file}")
     print(f"You selected base path: {base_path}")
 
-    op.report({"INFO"}, f"GLM loaded: {selected_glm_file}")
+    op.report({"INFO"}, f"GLM loading not implemented yet: {selected_glm_file}")
     return {"FINISHED"}

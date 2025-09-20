@@ -65,8 +65,8 @@ class GLMImport(bpy.types.Operator):
 
     # load NPCs or Weapons
     loadWeapons: bpy.props.BoolProperty(
-        name="Load Weapons",
-        description="When check you we load the Weapons instead of NPC",
+        name="Load Weapons/Objects",
+        description="When check you we load the Weapons and Objects instead of NPC",
         default=False,
     )
 
