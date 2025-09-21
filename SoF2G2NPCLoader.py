@@ -165,10 +165,13 @@ def handle_load_npc_file(op):
             op.report({"ERROR"}, message)
             return {"FINISHED"}
 
+        # Load shader file for NPC
+
         guessTextures = True
         success, message = scene.saveToBlender(
             scale,
             selected_g2skin_data,
+            loaded_shader_data,
             guessTextures,
             loadAnimations != SoF2G2GLA.AnimationLoadMode.NONE,
             SkeletonFixes[op.skeletonFixes],

@@ -12,16 +12,20 @@ def handle_load_weapon_file(op):
 
     _, weapons = DataCache.get_weapon_enum_items(basepath) #TODO caching if slow inside search context!?
     
+    #TODO load SOF2.item file for all item/boltons/weapons NPC items-definitions. aber schon weiter oben holen für surfaces on /off
+    # Load SOF2.item file
+    print("Loading SOF2.item")
+    _, loaded_default_items_data = DataCache.get_default_item_file(basepath,"ext_data/SOF2.item")
 
-    found_weapon_data = next((w for w in weapons if w.get("displayName") == op.weapon_selected), None)
+    found_weapon_data = next((w for w in weapons if w.get("name") == op.weapon_selected), None)
     if not found_weapon_data:
         op.report({"ERROR"}, "No weapon data found for the selected weapon.")
         return {"CANCELLED"}
 
     scale = op.scale / 100
-
+    
     scene = SoF2G2Scene.Scene(basepath)
-    success, message = scene.loadFromGLM(found_weapon_data.get("model"), {})
+    success, message = scene.loadFromGLM(found_weapon_data.get("wpn", {}).get("model"), {}) #found_weapon_data.get("weaponmodel", {}).get("model")
     if not success:
         op.report({"ERROR"}, message)
         return {"FINISHED"}
@@ -48,10 +52,19 @@ def handle_load_weapon_file(op):
         op.report({"ERROR"}, message)
         return {"FINISHED"}
 
+    # Load shader file for weapon
+    print("Loading .shader file: weapons.shader")
+    _, loaded_shader_data = DataCache.get_shaders_data(basepath, "weapons")
+
+    #TODO load gore stuff
+    #TODO load righ/left hand for first person (SOF2.inview)
+    #TODO .skl parsen & verarbeiten 
+
     guessTextures = True
     success, message = scene.saveToBlender(
         scale,
         {},
+        loaded_shader_data,
         guessTextures,
         loadAnimations != SoF2G2GLA.AnimationLoadMode.NONE,
         SkeletonFixes[op.skeletonFixes],

@@ -875,7 +875,11 @@ class MdxmSurface:
 
     # returns the created object
     def saveToBlender(
-        self, data: ImportMetadata, lodLevel: int, selected_skin_data: dict
+        self,
+        data: ImportMetadata,
+        lodLevel: int,
+        loaded_shader_data: dict,
+        selected_skin_data: dict,
     ):
         #  retrieve metadata (same across LODs)
         surfaceData = data.surfaceDataCollection.surfaces[self.index]
@@ -897,7 +901,7 @@ class MdxmSurface:
             and "stupidtriangle" not in name
         ):
             material = data.materialManager.getMaterial(
-                name, surfaceData.shader, "", selected_skin_data
+                name, surfaceData.shader, loaded_shader_data, selected_skin_data
             )
             if material is None:
                 material = bpy.data.materials.new(
@@ -1155,13 +1159,19 @@ class MdxmLOD:
         ), NoError
 
     def saveToBlender(
-        self, data: ImportMetadata, root: bpy.types.Object, selected_skin_data: dict
+        self,
+        data: ImportMetadata,
+        root: bpy.types.Object,
+        loaded_shader_data: dict,
+        selected_skin_data: dict,
     ):
         # 1st pass: create objects
         objects = []
         for surface in self.surfaces:
             if surface is not None:
-                obj = surface.saveToBlender(data, self.level, selected_skin_data)
+                obj = surface.saveToBlender(
+                    data, self.level, loaded_shader_data, selected_skin_data
+                )
                 objects.append(obj)
         # 2nd pass: set parent relations
         for i, obj in enumerate(objects):
@@ -1239,12 +1249,14 @@ class MdxmLODCollection:
         for LOD in self.LODs:
             LOD.saveToFile(file)
 
-    def saveToBlender(self, data: ImportMetadata, selected_skin_data: dict):
+    def saveToBlender(
+        self, data: ImportMetadata, loaded_shader_data: dict, selected_skin_data: dict
+    ):
         for i, LOD in enumerate(self.LODs):
             root = bpy.data.objects.new("model_root_" + str(i), None)
             root.parent = data.scene_root
             bpy.context.scene.collection.objects.link(root)
-            LOD.saveToBlender(data, root, selected_skin_data)
+            LOD.saveToBlender(data, root, loaded_shader_data, selected_skin_data)
 
     def getSize(self):
         size = 0
@@ -1432,6 +1444,7 @@ class GLM:
         gla: SoF2G2GLA.GLA,
         scene_root: bpy.types.Object,
         selected_skin_data: dict,
+        loaded_shader_data: dict,
         guessTextures: bool,
     ) -> Tuple[bool, ErrorMessage]:
         if gla.header.numBones != self.header.numBones:
@@ -1450,12 +1463,12 @@ class GLM:
             boneNames={bone.index: bone.name for bone in gla.skeleton.bones},
         )
         success, message = data.materialManager.init(
-            basepath, selected_skin_data, guessTextures
+            basepath, selected_skin_data, loaded_shader_data, guessTextures
         )
         if not success:
             return False, message
 
-        self.LODCollection.saveToBlender(data, selected_skin_data)
+        self.LODCollection.saveToBlender(data, loaded_shader_data, selected_skin_data)
         profiler.stop("creating surfaces")
         return True, NoError
 

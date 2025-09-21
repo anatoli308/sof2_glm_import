@@ -152,6 +152,7 @@ class Scene:
         self,
         scale,
         selected_skin_data: dict,
+        loaded_shader_data: dict,
         guessTextures: bool,
         useAnimation: bool,
         skeletonFixes: SoF2G2Constants.SkeletonFixes,
@@ -180,6 +181,7 @@ class Scene:
                 optional_cast(SoF2G2GLA.GLA, self.gla),
                 scene_root,
                 selected_skin_data,
+                loaded_shader_data,
                 guessTextures,
             )
             if not success:

@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from .SoF2G2DataParser import parse_shader_file, parse_g2skin_to_json
 from .SoF2G2DataParser import get_npcs_folder_data
 from .wpn_parser import parse_wpn_file, parse_inview_file
+from .item_parser import parse_item_file
 
 log_level = os.getenv("LOG_LEVEL", "INFO")
 
@@ -44,26 +45,7 @@ def reset_npc_cache():
 
 
 def get_shaders_data(basepath: str, filepath: str) -> List[Tuple[str, str, str]]:
-    global \
-        _cached_shader_query, \
-        _cached_shader_items, \
-        _cached_shader_data, \
-        _cached_model_name
-
-    selected_shader = (
-        _cached_model_name
-        if _cached_model_name
-        else os.path.splitext(os.path.basename(filepath or ""))[0]
-    )
-
-    if not selected_shader:
-        return [("None", "None", "No shader selected")], None
-
-    selected_shader = selected_shader.strip()
-
-    if _cached_shader_query == selected_shader and _cached_shader_items:
-        return _cached_shader_items, _cached_shader_data
-
+    selected_shader = os.path.splitext(os.path.basename(filepath or ""))[0]
     shader_dir = os.path.join(basepath or "", "shaders")
     filename = f"{selected_shader}.shader"
     file_path = os.path.join(shader_dir, filename)
@@ -86,20 +68,17 @@ def get_shaders_data(basepath: str, filepath: str) -> List[Tuple[str, str, str]]
             ("None", "None", f"No shader file {filename} found in {shader_dir}")
         )
 
-    _cached_shader_query = selected_shader
-    _cached_shader_items = items
-    _cached_shader_data = shader_data
-
     return items, shader_data
 
 
 def get_shaders_folder_data(basepath: str, filepath: str) -> List[Tuple[str, str, str]]:
+    """
     global \
         _cached_shader_query, \
         _cached_shader_items, \
         _cached_shader_data, \
         _cached_model_name
-
+    """
     selected_shader: Optional[str] = None
     if _cached_model_name:
         selected_shader = _cached_model_name
@@ -111,8 +90,8 @@ def get_shaders_folder_data(basepath: str, filepath: str) -> List[Tuple[str, str
 
     selected_shader = selected_shader.strip()
 
-    if _cached_shader_query == selected_shader and _cached_shader_items:
-        return _cached_shader_items
+    # if _cached_shader_query == selected_shader and _cached_shader_items:
+    #    return _cached_shader_items
 
     shader_dir = os.path.join(basepath or "", "shaders")
     items: List[Tuple[str, str, str]] = []
@@ -247,76 +226,90 @@ def get_skins(
     print("Available .g2skin files:", len(items))
     return items, skin_data
 
+
 def get_weapon_enum_items(basepath):
     """
     Gibt eine Liste von EnumItems für Waffen zurück: (identifier, name, description)
-    NEU: Statt .glm-Dateien zu listen, wird eine Mock-Parsing von ext_data/SOF2.wpn genutzt.
-    Zusätzlich wird die inview Datei geladen und die entsprechenden Einträge den Waffen zugewiesen.
+    NEU: Lädt zuerst die inview Datei als primäre Quelle, dann werden die wpn Daten zu den entsprechenden inview Einträgen hinzugefügt.
     """
     items = []
-    wpn_path = os.path.join(basepath, "ext_data", "SOF2.wpn")
+
+    # Load and parse inview file first (primary source)
+    inview_path = os.path.join(basepath, "inview", "SOF2.inview")
     weapons = []
 
-    if os.path.isfile(wpn_path):
-        try:
-            text = open(wpn_path, "r", encoding="utf-8", errors="ignore").read()
-            weapons = parse_wpn_file(text)
-
-            # Extract weapon names from parsed data
-            for weapon in weapons:
-                name = weapon.get('name', '')
-                if name:
-                    display_name = weapon.get('displayName', name)
-                    model = weapon.get('model', '')
-                    # Build description
-                    desc_parts = []
-                    if display_name != name:
-                        desc_parts.append(f"{display_name}")
-                    if model:
-                        desc_parts.append(f"{model}")
-                    
-                    description = " | ".join(desc_parts)
-                    items.append((display_name, name, description))
-            
-        except Exception as e:
-            print(f"Error reading/parsing SOF2.wpn: {e}")
-
-    # Load and parse inview file
-    inview_path = os.path.join(basepath, "inview", "SOF2.inview")
-    inview_weapons = []
-    
     if os.path.isfile(inview_path):
         try:
-            inview_text = open(inview_path, "r", encoding="utf-8", errors="ignore").read()
-            inview_weapons = parse_inview_file(inview_text)
-            print(f"Loaded {len(inview_weapons)} weapons from inview file")
+            inview_text = open(
+                inview_path, "r", encoding="utf-8", errors="ignore"
+            ).read()
+            weapons = parse_inview_file(inview_text)
+            print(f"Loaded {len(weapons)} weapons from inview file")
         except Exception as e:
             print(f"Error reading/parsing SOF2.inview: {e}")
     else:
         print(f"Inview file not found: {inview_path}")
 
-    # Match inview entries to weapons by name and assign inview data
-    if weapons and inview_weapons:
-        # Create a lookup dictionary for inview weapons by name
-        inview_lookup = {}
-        for inview_weapon in inview_weapons:
-            inview_name = inview_weapon.get('name', '')
-            if inview_name:
-                inview_lookup[inview_name] = inview_weapon
-        
-        # Assign inview data to matching weapons
+    # Load and parse wpn file (secondary source for additional data)
+    wpn_path = os.path.join(basepath, "ext_data", "SOF2.wpn")
+    wpn_weapons = []
+
+    if os.path.isfile(wpn_path):
+        try:
+            wpn_text = open(wpn_path, "r", encoding="utf-8", errors="ignore").read()
+            wpn_weapons = parse_wpn_file(wpn_text)
+            print(f"Loaded {len(wpn_weapons)} weapons from wpn file")
+        except Exception as e:
+            print(f"Error reading/parsing SOF2.wpn: {e}")
+
+    # Match wpn entries to inview weapons by name and assign wpn data
+    if weapons and wpn_weapons:
+        # Create a lookup dictionary for wpn weapons by name
+        wpn_lookup = {}
+        for wpn_weapon in wpn_weapons:
+            wpn_name = wpn_weapon.get("name", "")
+            if wpn_name:
+                wpn_lookup[wpn_name] = wpn_weapon
+
+        # Assign wpn data to matching inview weapons
         for weapon in weapons:
-            weapon_name = weapon.get('name', '')
-            if weapon_name in inview_lookup:
-                weapon['inview'] = inview_lookup[weapon_name]
+            weapon_name = weapon.get("name", "")
+            if weapon_name in wpn_lookup:
+                weapon["wpn"] = wpn_lookup[weapon_name]
                 if log_level == "DEBUG":
-                    print(f"Assigned inview data to weapon: {weapon_name}")
+                    print(f"Assigned wpn data to inview weapon: {weapon_name}")
+
+    # Extract weapon names from inview data for enum items
+    for weapon in weapons:
+        name = weapon.get("name", "")
+        if name:
+            # Try to get display name from wpn data if available
+            display_name = name
+            if "wpn" in weapon:
+                display_name = weapon["wpn"].get("displayName", name)
+
+            # Try to get model from wpn data if available
+            model = ""
+            if "wpn" in weapon:
+                model = weapon["wpn"].get("model", "")
+
+            # Build description
+            desc_parts = []
+            if display_name != name:
+                desc_parts.append(f"{display_name}")
+            if model:
+                desc_parts.append(f"{model}")
+
+            description = (
+                " | ".join(desc_parts) if desc_parts else f"Inview weapon: {name}"
+            )
+            items.append((name, name, description))
 
     if not items:
         items.append(("None", "None", "No weapons found"))
 
     items.sort(key=lambda x: x[1])
-    
+
     return items, weapons
 
 
@@ -348,7 +341,7 @@ def get_npc_enum_items(basepath):
 
                 # Bessere Beschreibung zusammenbauen
                 comments = f"{comments_orig}"
-                extra_info = []#extra infos used for better search 
+                extra_info = []  # extra infos used for better search
                 if npc_filename:
                     extra_info.append(f"File Name: {npc_filename}")
                 if formal_name:
@@ -409,3 +402,60 @@ def get_npcs_folder_data_cached(basepath: str) -> List[Tuple[str, str, str]]:
     _cached_npc_data = npc_data
     print("Available .npc files:", len(items))
     return items, npc_data
+
+
+def get_default_item_file(
+    basepath: str, filename: str = "ext_data/SOF2.item"
+) -> Tuple[List[Tuple[str, str, str]], Dict[str, Any]]:
+    """
+    Load and parse SOF2.item file for all item/weapon definitions.
+    Returns (items, item_data) where items is list of (identifier, name, description) tuples
+    and item_data is dict with 'weapons' and 'items' arrays containing parsed data.
+    """
+    items: List[Tuple[str, str, str]] = []
+    item_data: Dict[str, Any] = {"weapons": [], "items": []}
+
+    item_path = os.path.join(basepath, filename)
+
+    if os.path.isfile(item_path):
+        try:
+            with open(item_path, "r", encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+            parsed_items = parse_item_file(text)
+
+            for item in parsed_items:
+                name = item.get("name", "")
+                if name:
+                    item_type = item.get("_type", "item")
+                    model = item.get("model", "")
+                    onsurf = item.get("onsurf", [])
+                    offsurf = item.get("offsurf", [])
+
+                    # Build description
+                    desc_parts = [f"Type: {item_type}"]
+                    if model:
+                        desc_parts.append(f"Model: {model}")
+                    if onsurf:
+                        desc_parts.append(f"OnSurf: {', '.join(onsurf)}")
+                    if offsurf:
+                        desc_parts.append(f"OffSurf: {', '.join(offsurf)}")
+
+                    description = " | ".join(desc_parts)
+                    items.append((name, name, description))
+                    
+                    # Add to appropriate array based on type
+                    if item_type == "weapon":
+                        item_data["weapons"].append(item)
+                    else:
+                        item_data["items"].append(item)
+
+            print(f"Loaded {len(parsed_items)} items from {filename} ({len(item_data['weapons'])} weapons, {len(item_data['items'])} items)")
+        except Exception as e:
+            print(f"Error parsing item file {item_path}: {e}")
+    else:
+        print(f"Item file not found: {item_path}")
+
+    if not items:
+        items.append(("None", "None", "No items found"))
+
+    return items, item_data

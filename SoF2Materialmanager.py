@@ -13,7 +13,6 @@ from .error_types import ErrorMessage, NoError  # noqa: E402
 
 import bpy  # noqa: E402  # pyright: ignore[reportMissingImports]
 import os  # noqa: E402
-import re  # noqa: E402
 
 log_level = os.getenv("LOG_LEVEL", "INFO")
 
@@ -26,7 +25,7 @@ class MaterialManager:
         self.useSkin = False
         self.initialized = False
 
-    def init(self, basepath: str, selected_g2skin_data: dict, guessTextures: bool):
+    def init(self, basepath: str, selected_g2skin_data: dict, loaded_shader_data: dict, guessTextures: bool):
         self.basepath = basepath
         self.guessTextures = guessTextures
         self.skin = {}
@@ -63,11 +62,12 @@ class MaterialManager:
 
     # shader_def wird derzeit nicht verwendet!
     def getMaterial(
-        self, name, bsShader, shader_def: str = "", selected_skin_data: dict = {}
+        self, name, bsShader, loaded_shader_data: dict, selected_skin_data: dict = {}
     ):
         """
         Lädt ein Material basierend auf dem G2/G3 Shader.
-        shader_def: optionaler Text der Shader-Definition (.shader) - hilft, map-Einträge zu finden.
+        loaded_shader_data: geparste Shader-Daten aus der .shader Datei - hilft, map-Einträge zu finden.
+        selected_skin_data: optionale Skin-Daten für zusätzliche Material-Informationen.
         Versucht, BaseColor, Normal, Roughness, Metallic, AO, Emission automatisch zu finden.
         """
         assert self.initialized
@@ -85,6 +85,35 @@ class MaterialManager:
         key = shader.lower()
         if key in self.materials:
             return self.materials[key]
+
+        # Check if we have loaded_shader_data for this shader key
+        if loaded_shader_data and key in loaded_shader_data:
+            shader_entry = loaded_shader_data[key]
+            if isinstance(shader_entry, dict) and "blocks" in shader_entry:
+                blocks = shader_entry["blocks"]
+                if isinstance(blocks, list):
+                    # Create materials for each block's map value
+                    for i, block in enumerate(blocks):
+                        if isinstance(block, dict) and "map" in block:
+                            map_value = block["map"]
+                            if map_value:
+                                # Create a unique material name for each block
+                                material_name = f"{shader}_{i}" if i > 0 else shader
+                                material_key = material_name.lower()
+                                
+                                if material_key not in self.materials:
+                                    mat = bpy.data.materials.new(material_name)
+                                    self.materials[material_key] = mat
+                                    print(f"Created material from shader data: {material_name} (map: {map_value})")
+                                    
+                                    # Configure the material with the map value
+                                    self._configure_material_with_map(mat, map_value)
+                                
+                                # Return the first material found (or could return all)
+                                if i == 0:
+                                    return self.materials[material_key]
+        
+        # If we reach here, no shader data was found, create default material
 
         # Neues Material erstellen
         mat = bpy.data.materials.new(shader)
@@ -136,22 +165,21 @@ class MaterialManager:
                         break
             return res
 
-        # 1) Versuche Shader-Definition (raw text) zu parsen und erste 'map' zu verwenden
+        # 1) Versuche Shader-Daten zu verwenden und erste 'map' zu finden
         base_texture_path = None
-        if shader_def and isinstance(shader_def, str):
-            # suche map tokens wie: map textures/foo/bar
-            m = re.search(r"\bmap\s+([^\s\{\n]+)", shader_def)
-            if m:
-                candidate = m.group(1).strip().strip('"')
-                success, abs_path = _try_find_file(candidate)
-                if success:
-                    base_texture_path = abs_path
-                else:
-                    # try candidate as relative path under basepath (FindFile might already resolve)
-                    # leave for later fallback
-                    base_texture_path = None
+        if loaded_shader_data and key in loaded_shader_data:
+            shader_entry = loaded_shader_data[key]
+            if isinstance(shader_entry, dict) and "blocks" in shader_entry:
+                blocks = shader_entry["blocks"]
+                if isinstance(blocks, list) and len(blocks) > 0:
+                    first_block = blocks[0]
+                    if isinstance(first_block, dict) and "map" in first_block:
+                        candidate = first_block["map"]
+                        success, abs_path = _try_find_file(candidate)
+                        if success:
+                            base_texture_path = abs_path
 
-        # 2) Wenn kein shader_def-map, versuche shader direkt als texture-name zu finden (wie vorher)
+        # 2) Wenn kein shader-data-map, versuche shader direkt als texture-name zu finden (wie vorher)
         if not base_texture_path:
             success, abs_path = _try_find_file(shader)
             if success:
@@ -310,9 +338,11 @@ class MaterialManager:
 
         # **SOF2 SHADER SUPPORT: Handle cull disable (two-sided materials)**
         if (
-            shader_def
-            and "cull" in shader_def.lower()
-            and "disable" in shader_def.lower()
+            loaded_shader_data
+            and key in loaded_shader_data
+            and isinstance(loaded_shader_data[key], dict)
+            and "cull" in str(loaded_shader_data[key]).lower()
+            and "disable" in str(loaded_shader_data[key]).lower()
         ):
             mat.use_backface_culling = False
             mat["unity_two_sided"] = True
@@ -325,3 +355,60 @@ class MaterialManager:
 
         # done
         return mat
+
+    def _configure_material_with_map(self, mat, map_value):
+        """
+        Configure a material with the given map value (texture path).
+        This is a simplified version of the main material configuration.
+        """
+        if not map_value:
+            return
+        
+        # Try to find the texture file
+        def _try_find_file(name_candidate: str):
+            if not name_candidate:
+                return False, ""
+            return SoF2Filesystem.FindFile(
+                name_candidate, self.basepath, ["jpg", "png", "tga", "dds"]
+            )
+        
+        success, abs_path = _try_find_file(map_value)
+        if not success:
+            print(f"Texture not found: {map_value}")
+            mat.diffuse_color = (1, 0, 1, 1)  # Pink fallback
+            return
+        
+        # Basic material setup with the found texture
+        mat.use_nodes = True
+        nodes = mat.node_tree.nodes
+        links = mat.node_tree.links
+        
+        # Clear existing nodes
+        for node in nodes:
+            nodes.remove(node)
+        
+        # Create basic nodes
+        output_node = nodes.new(type='ShaderNodeOutputMaterial')
+        output_node.location = (400, 0)
+        
+        principled = nodes.new(type='ShaderNodeBsdfPrincipled')
+        principled.location = (0, 0)
+        
+        # Create image texture node
+        image_node = nodes.new(type='ShaderNodeTexImage')
+        image_node.location = (-400, 0)
+        
+        # Load the texture
+        try:
+            image = bpy.data.images.load(abs_path)
+            image_node.image = image
+        except Exception as e:
+            print(f"Error loading texture {abs_path}: {e}")
+            mat.diffuse_color = (1, 0, 1, 1)  # Pink fallback
+            return
+        
+        # Connect nodes
+        links.new(image_node.outputs['Color'], principled.inputs['Base Color'])
+        links.new(principled.outputs['BSDF'], output_node.inputs['Surface'])
+        
+        print(f"Configured material with texture: {map_value}")

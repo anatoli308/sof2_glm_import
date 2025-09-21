@@ -1,9 +1,11 @@
-Collection of Soldier of Fortune 2 plugins for blender
+Blender Addon for SoF2 Assets
 
-Forked of https://github.com/mrwonko/Blender-Jedi-Academy-Tools/tree/master by Mr. Wonko et al 
-and https://github.com/cagelight/jedi-academy-blender-suite by Cagelight
+Forked of 
+- https://github.com/mrwonko/Blender-Jedi-Academy-Tools/tree/master by Mr. Wonko et al 
+- https://github.com/cagelight/jedi-academy-blender-suite by Cagelight
 
-hard modified and customized by me
+
+hard modified and customized by me for a working unity workflow
 
 # Requirements
 TESTED BLENDER VERSION: 4.5.3 LTS
