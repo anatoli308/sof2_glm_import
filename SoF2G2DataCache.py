@@ -442,14 +442,16 @@ def get_default_item_file(
 
                     description = " | ".join(desc_parts)
                     items.append((name, name, description))
-                    
+
                     # Add to appropriate array based on type
                     if item_type == "weapon":
                         item_data["weapons"].append(item)
                     else:
                         item_data["items"].append(item)
 
-            print(f"Loaded {len(parsed_items)} items from {filename} ({len(item_data['weapons'])} weapons, {len(item_data['items'])} items)")
+            print(
+                f"Loaded {len(parsed_items)} items from {filename} ({len(item_data['weapons'])} weapons, {len(item_data['items'])} items)"
+            )
         except Exception as e:
             print(f"Error parsing item file {item_path}: {e}")
     else:
@@ -459,3 +461,161 @@ def get_default_item_file(
         items.append(("None", "None", "No items found"))
 
     return items, item_data
+
+
+def generate_json_results(
+    weapons: List[Dict[str, Any]],
+    loaded_default_items_data: Dict[str, Any],
+    basepath: str,
+) -> Tuple[bool, str]:
+    """
+    Generate JSON files from weapons and items data.
+    Exports weapons to 'SoF2_Weapons.json' and items to 'SoF2_Items.json' in basepath/exported_json_data/
+
+    Args:
+        weapons: List of weapon dictionaries
+        loaded_default_items_data: Dict with 'weapons' and 'items' arrays
+        basepath: Base path where to create the exported_json_data directory
+
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    import json
+    from pathlib import Path
+
+    try:
+        # Create exported_json_data directory
+        export_dir = os.path.join(basepath, "exported_json_data")
+        os.makedirs(export_dir, exist_ok=True)
+
+        # Export weapons
+        weapons_file = os.path.join(export_dir, "SoF2_Weapons.json")
+        with open(weapons_file, "w", encoding="utf-8") as f:
+            json.dump(weapons, f, indent=2, ensure_ascii=False)
+
+        # Export items
+        items_file = os.path.join(export_dir, "SoF2_Items.json")
+        with open(items_file, "w", encoding="utf-8") as f:
+            json.dump(loaded_default_items_data, f, indent=2, ensure_ascii=False)
+
+        weapons_count = len(weapons)
+        items_count = len(loaded_default_items_data.get("items", []))
+        weapons_from_items = len(loaded_default_items_data.get("weapons", []))
+
+        message = f"Successfully exported JSON files to {export_dir}:\n"
+        message += f"- SoF2_Weapons.json: {weapons_count} weapons\n"
+        message += f"- SoF2_Items.json: {items_count} items, {weapons_from_items} weapons from items"
+
+        print(message)
+        return True, message
+
+    except Exception as e:
+        error_msg = f"Error generating JSON files: {str(e)}"
+        print(error_msg)
+        return False, error_msg
+
+
+def generate_npc_json_results(
+    npcs_data: Dict[str, Any], basepath: str
+) -> Tuple[bool, str]:
+    """
+    Generate JSON files from NPCs data.
+    Exports NPCs to 'SoF2_NPCs.json' in basepath/exported_json_data/
+
+    Args:
+        npcs_data: Dictionary containing all NPC data
+        basepath: Base path where to create the exported_json_data directory
+
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    import json
+    from pathlib import Path
+
+    try:
+        # Create exported_json_data directory
+        export_dir = os.path.join(basepath, "exported_json_data")
+        os.makedirs(export_dir, exist_ok=True)
+
+        # Export NPCs
+        npcs_file = os.path.join(export_dir, "SoF2_NPCs.json")
+        with open(npcs_file, "w", encoding="utf-8") as f:
+            json.dump(npcs_data, f, indent=2, ensure_ascii=False)
+
+        npcs_count = len(npcs_data)
+        
+        message = f"Successfully exported JSON files to {export_dir}:\n"
+        message += f"- SoF2_NPCs.json: {npcs_count} NPC files\n"
+
+        print(message)
+        return True, message
+
+    except Exception as e:
+        error_msg = f"Error generating NPC/SKL JSON files: {str(e)}"
+        print(error_msg)
+        return False, error_msg
+
+
+def generate_individual_skl_files(all_skl_data: List[Dict[str, Any]], basepath: str) -> Tuple[bool, str]:
+    """
+    Generate individual JSON files for each SKL skeleton data entry.
+    Creates separate files for each skeleton in basepath/exported_json_data/skeletons/
+    
+    Args:
+        all_skl_data: List of SKL skeleton data dictionaries
+        basepath: Base path where to create the exported_json_data directory
+        
+    Returns:
+        Tuple of (success: bool, message: str)
+    """
+    import json
+    from pathlib import Path
+    
+    try:
+        # Create skeletons subdirectory
+        skeletons_dir = os.path.join(basepath, "exported_json_data", "skeletons")
+        os.makedirs(skeletons_dir, exist_ok=True)
+        
+        created_files = []
+        
+        for i, skl_data in enumerate(all_skl_data):
+            # Generate filename based on skeleton data or use index
+            filename = f"skeleton_{i:03d}.json"
+            
+            # Try to get a better filename from the data if available
+            if isinstance(skl_data, dict):
+                if "name" in skl_data:
+                    filename = f"{skl_data['name']}.json"
+                elif "filename" in skl_data:
+                    filename = f"{skl_data['filename']}.json"
+                elif "skeleton_name" in skl_data:
+                    filename = f"{skl_data['skeleton_name']}.json"
+            
+            # Clean filename for filesystem
+            filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_', '.')).rstrip()
+            filename = filename.replace(' ', '_')
+            
+            # Ensure .json extension
+            if not filename.endswith('.json'):
+                filename += '.json'
+            
+            # Create file path
+            file_path = os.path.join(skeletons_dir, filename)
+            
+            # Write individual skeleton file
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(skl_data, f, indent=2, ensure_ascii=False)
+            
+            created_files.append(filename)
+        
+        message = f"Successfully created {len(created_files)} individual skeleton files in {skeletons_dir}:\n"
+        for filename in created_files:
+            message += f"- {filename}\n"
+        
+        print(message)
+        return True, message
+        
+    except Exception as e:
+        error_msg = f"Error creating individual SKL files: {str(e)}"
+        print(error_msg)
+        return False, error_msg

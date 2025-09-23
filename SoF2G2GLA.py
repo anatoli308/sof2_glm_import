@@ -281,6 +281,99 @@ class MdxaSkel:
                 )
         return True, NoError
 
+    def _make_pelvis_root_bone(self) -> None:
+        """
+        Make the pelvis bone the root bone for Unity compatibility.
+        This ensures Unity recognizes the pelvis as the skinned mesh renderer root
+        instead of the model_root.
+        """
+        # Find pelvis bone (common names: "pelvis", "pelvis_root", "hip", "hips")
+        pelvis_bone = None
+        pelvis_candidates = [
+            "pelvis", "pelvis_root", "hip", "hips", "pelvis_bone",
+            "pelvisbone", "pelvis_root_bone", "pelvisroot",
+            "hip_bone", "hipbone", "hips_bone", "hipsbone"
+        ]
+        
+        for bone in self.bones:
+            if bone.name.lower() in pelvis_candidates:
+                pelvis_bone = bone
+                break
+        
+        if not pelvis_bone:
+            print("Warning: No pelvis bone found. Common names: pelvis, pelvis_root, hip, hips")
+            print(f"Available bones: {[bone.name for bone in self.bones]}")
+            return
+        
+        print(f"Found pelvis bone: {pelvis_bone.name}, making it the root bone")
+        
+        # Find the current root bone (parent = -1)
+        current_root = None
+        for bone in self.bones:
+            if bone.parent == -1:
+                current_root = bone
+                break
+        
+        if not current_root:
+            print("Warning: No root bone found")
+            return
+        
+        if current_root == pelvis_bone:
+            print("Pelvis is already the root bone")
+            return
+        
+        print(f"Current root bone: {current_root.name}, making it a child of pelvis")
+        
+        # Make pelvis the new root (parent = -1)
+        pelvis_bone.parent = -1
+        
+        # Make the current root a child of the pelvis
+        current_root.parent = pelvis_bone.index
+        
+        # Update pelvis children list
+        if current_root.index not in pelvis_bone.children:
+            pelvis_bone.children.append(current_root.index)
+            pelvis_bone.numChildren += 1
+        
+        # Remove current root from its old parent's children list
+        for bone in self.bones:
+            if current_root.index in bone.children:
+                bone.children.remove(current_root.index)
+                bone.numChildren -= 1
+                break
+        
+        print(f"Successfully made {pelvis_bone.name} the root bone with {current_root.name} as child")
+        
+        # Verify the hierarchy is still valid
+        self._verify_bone_hierarchy()
+
+    def _verify_bone_hierarchy(self) -> None:
+        """
+        Verify that the bone hierarchy is still valid after making pelvis the root.
+        """
+        # Check that there's exactly one root bone (parent = -1)
+        root_bones = [bone for bone in self.bones if bone.parent == -1]
+        if len(root_bones) != 1:
+            print(f"Warning: Expected 1 root bone, found {len(root_bones)}")
+            for bone in root_bones:
+                print(f"  Root bone: {bone.name}")
+        
+        # Check that all bones have valid parent indices
+        for bone in self.bones:
+            if bone.parent != -1:
+                if bone.parent >= len(self.bones) or bone.parent < 0:
+                    print(f"Warning: Bone {bone.name} has invalid parent index {bone.parent}")
+        
+        # Check that children lists are consistent
+        for bone in self.bones:
+            for child_index in bone.children:
+                if child_index >= len(self.bones) or child_index < 0:
+                    print(f"Warning: Bone {bone.name} has invalid child index {child_index}")
+                else:
+                    child_bone = self.bones[child_index]
+                    if child_bone.parent != bone.index:
+                        print(f"Warning: Inconsistent parent-child relationship: {bone.name} -> {child_bone.name}")
+
     def saveToBlender(
         self, scene_root: bpy.types.Object, skeletonFixes: SoF2G2Constants.SkeletonFixes
     ) -> Tuple[bool, ErrorMessage]:
@@ -297,6 +390,10 @@ class MdxaSkel:
         #  Set the armature as active and go to edit mode to add bones
         bpy.context.view_layer.objects.active = self.armature_object
         bpy.ops.object.mode_set(mode="EDIT")
+        
+        # **NEW: Make pelvis the root bone for Unity compatibility**
+        self._make_pelvis_root_bone()
+        
         # list of indices of already created bones - only those bones with this as parent will be added
         createdBonesIndices = [-1]
         # bones yet to be created
@@ -639,8 +736,8 @@ class MdxaAnimation:
         if scale == 0:
             # if True:
             scale = 1
-        else:
-            scale = 1 / scale
+        #else:
+        #    scale = 1 / scale
         # scaleMatrix = mathutils.Matrix(
         #     [[scale, 0, 0, 0], [0, scale, 0, 0], [0, 0, scale, 0], [0, 0, 0, 1]]
         # )
@@ -1323,6 +1420,9 @@ class GLA:
 
             # set its parent to the scene_root (not strictly speaking necessary but keeps output consistent)
             self.skeleton_object.parent = scene_root
+
+            # **NEW: Make pelvis the root bone for Unity compatibility (existing armature)**
+            self.skeleton._make_pelvis_root_bone()
 
             # add animations, if any
             if useAnimation:

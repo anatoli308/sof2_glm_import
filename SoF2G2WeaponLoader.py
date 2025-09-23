@@ -12,10 +12,14 @@ def handle_load_weapon_file(op):
 
     _, weapons = DataCache.get_weapon_enum_items(basepath) #TODO caching if slow inside search context!?
     
-    #TODO load SOF2.item file for all item/boltons/weapons NPC items-definitions. aber schon weiter oben holen für surfaces on /off
     # Load SOF2.item file
     print("Loading SOF2.item")
     _, loaded_default_items_data = DataCache.get_default_item_file(basepath,"ext_data/SOF2.item")
+
+    success, message = DataCache.generate_json_results(weapons, loaded_default_items_data, basepath)
+    if success:
+        op.report({"INFO"}, message)
+        print(message)
 
     found_weapon_data = next((w for w in weapons if w.get("name") == op.weapon_selected), None)
     if not found_weapon_data:

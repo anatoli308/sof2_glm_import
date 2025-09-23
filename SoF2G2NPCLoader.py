@@ -7,6 +7,7 @@ from . import SoF2G2DataCache as DataCache
 from . import SoF2G2Scene
 from . import SoF2G2GLA
 from . import frames_parser
+from . import skl_parser
 
 
 def find_skin_data_by_file_value(skin_data: dict, file_name: str):
@@ -31,27 +32,65 @@ def find_character_template_by_key(npcs_data, key):
     Returns:
         Dictionary containing the character template, or None if not found
     """
+    all_char_templates = []
     for npc_filename, npc_content in npcs_data.items():
         char_templates = npc_content.get("CharacterTemplate", [])
         if not isinstance(char_templates, list):
             char_templates = [char_templates]
 
+        # Extend each char_template with npc_filename and group_info
         for char_template in char_templates:
-            if char_template.get("Name") == key:
-                return {
-                    "char_template": char_template,
-                    "npc_filename": npc_filename,
-                    "group_info": npc_content.get("GroupInfo", {}),
-                }
-    return None
+            extended_template = dict(char_template)  # Create a copy
+            extended_template["npc_filename"] = npc_filename
+            extended_template["group_info"] = npc_content.get("GroupInfo", {})
+            all_char_templates.append(extended_template)
+
+    found_char_template = None
+    for char_template in all_char_templates:
+        if char_template.get("Name") == key:
+            found_char_template = {
+                "char_template": char_template,
+                "npc_filename": char_template.get("npc_filename"),
+                "group_info": char_template.get("group_info", {}),
+            }
+    return all_char_templates, found_char_template
 
 
 def handle_load_npc_file(op):
     _, npcs_files_data = get_npcs_folder_data_cached(op.basepath)
 
-    character_template = find_character_template_by_key(
+    npcs_data, character_template = find_character_template_by_key(
         npcs_files_data, op.npc_selected
     )
+
+    # lese alle skl dateien aus basepath/skeletons folder,parse mit skl_parser.py und speichere sie im array all_skl_data
+    all_skl_data = []
+    for skl_file in os.listdir(os.path.join(op.basepath, "skeletons")):
+        if skl_file.endswith(".skl"):
+            skl_data = skl_parser.parse_skl(
+                open(
+                    os.path.join(op.basepath, "skeletons", skl_file),
+                    "r",
+                    encoding="utf-8",
+                ).read()
+            )
+            # Add filename to the parsed data
+            if isinstance(skl_data, dict):
+                skl_data["filename"] = skl_file
+            all_skl_data.append(skl_data)
+
+    success, message = DataCache.generate_npc_json_results(
+        npcs_data, op.basepath
+    )
+    if success:
+        op.report({"INFO"}, message)
+        print(message)
+    
+    # Generate individual SKL files
+    success_skl, message_skl = DataCache.generate_individual_skl_files(all_skl_data, op.basepath)
+    if success_skl:
+        op.report({"INFO"}, message_skl)
+        print(message_skl)
 
     if character_template:
         print(f"Found character template for {op.npc_selected}:")
@@ -70,9 +109,9 @@ def handle_load_npc_file(op):
             getattr(op, "basepath", ""), character_model_path
         )
 
-        character_template_skin_files = character_template.get(
-            "char_template", {}
-        ).get("Skin", {})
+        character_template_skin_files = character_template.get("char_template", {}).get(
+            "Skin", {}
+        )
         if isinstance(character_template_skin_files, dict):
             character_template_skin_information = character_template_skin_files
         elif isinstance(character_template_skin_files, list):
@@ -100,9 +139,9 @@ def handle_load_npc_file(op):
             )
             return {"CANCELLED"}
 
-        loaded_model_from_g2 = os.path.splitext(
-            os.path.basename(character_model_path)
-        )[0]
+        loaded_model_from_g2 = os.path.splitext(os.path.basename(character_model_path))[
+            0
+        ]
         print(f"Loading .shader file: {loaded_model_from_g2}.shader")
         _, loaded_shader_data = DataCache.get_shaders_data(
             op.basepath, loaded_model_from_g2
@@ -127,9 +166,7 @@ def handle_load_npc_file(op):
         scale = op.scale / 100
 
         scene = SoF2G2Scene.Scene(op.basepath)
-        success, message = scene.loadFromGLM(
-            character_model_path, selected_g2skin_data
-        )
+        success, message = scene.loadFromGLM(character_model_path, selected_g2skin_data)
         if not success:
             op.report({"ERROR"}, message)
             return {"FINISHED"}
@@ -185,5 +222,3 @@ def handle_load_npc_file(op):
     else:
         print(f"No character template found for key: {op.npc_selected}")
         return {"CANCELLED"}
-
-
