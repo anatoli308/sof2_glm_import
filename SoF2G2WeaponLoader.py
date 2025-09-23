@@ -3,6 +3,7 @@ from typing import cast
 
 from .SoF2G2Constants import SkeletonFixes
 from . import SoF2G2DataCache as DataCache
+from . import SoF2G2Exporter
 from . import SoF2G2Scene
 from . import SoF2G2GLA
 from . import frames_parser
@@ -10,17 +11,13 @@ from . import frames_parser
 def handle_load_weapon_file(op):
     basepath = os.path.normpath(op.basepath)
 
-    _, weapons = DataCache.get_weapon_enum_items(basepath) #TODO caching if slow inside search context!?
-    
-    # Load SOF2.item file
-    print("Loading SOF2.item")
-    _, loaded_default_items_data = DataCache.get_default_item_file(basepath,"ext_data/SOF2.item")
-
-    success, message = DataCache.generate_json_results(weapons, loaded_default_items_data, basepath)
+    success, message = SoF2G2Exporter.export_all_data(basepath)
     if success:
         op.report({"INFO"}, message)
         print(message)
 
+    # After export, get weapons to proceed with loading the selected one
+    _, weapons = DataCache.get_weapon_enum_items(basepath)
     found_weapon_data = next((w for w in weapons if w.get("name") == op.weapon_selected), None)
     if not found_weapon_data:
         op.report({"ERROR"}, "No weapon data found for the selected weapon.")

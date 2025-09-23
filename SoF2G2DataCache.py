@@ -186,16 +186,7 @@ def _skin_contains_model(skin_path: str, model_name: str) -> bool:
 def get_skins(
     basepath: str, filepath: str
 ) -> Tuple[List[Tuple[str, str, str]], Dict[str, Dict[str, Any]]]:
-    global _cached_model_name, _cached_items, _cached_skin_data
-
     model_name = os.path.splitext(os.path.basename(filepath or ""))[0]
-
-    if model_name == _cached_model_name and _cached_items:
-        if log_level == "DEBUG":
-            print(
-                f"Using cached skins for model:{model_name}, count: {len(_cached_items)}"
-            )
-        return _cached_items, _cached_skin_data
 
     items: List[Tuple[str, str, str]] = []
     skin_data: Dict[str, Dict[str, Any]] = {}
@@ -481,7 +472,7 @@ def generate_json_results(
         Tuple of (success: bool, message: str)
     """
     import json
-    from pathlib import Path
+    
 
     try:
         # Create exported_json_data directory
@@ -530,7 +521,7 @@ def generate_npc_json_results(
         Tuple of (success: bool, message: str)
     """
     import json
-    from pathlib import Path
+    
 
     try:
         # Create exported_json_data directory
@@ -556,33 +547,50 @@ def generate_npc_json_results(
         return False, error_msg
 
 
-def generate_individual_skl_files(all_skl_data: List[Dict[str, Any]], basepath: str) -> Tuple[bool, str]:
+def generate_individual_skl_files(all_skl_data: Any, basepath: str) -> Tuple[bool, str]:
     """
-    Generate individual JSON files for each SKL skeleton data entry.
-    Creates separate files for each skeleton in basepath/exported_json_data/skeletons/
-    
+    Generate skeleton JSON exports under basepath/exported_json_data/skeletons/.
+
+    Supports two input forms:
+    - List[Dict]: creates one file per entry (legacy behavior)
+    - Dict: writes a single skeleton.json file
+
     Args:
-        all_skl_data: List of SKL skeleton data dictionaries
+        all_skl_data: list of skeleton dicts or a single dict (from skeletons/skeleton.json)
         basepath: Base path where to create the exported_json_data directory
-        
+
     Returns:
         Tuple of (success: bool, message: str)
     """
     import json
-    from pathlib import Path
+    
     
     try:
         # Create skeletons subdirectory
         skeletons_dir = os.path.join(basepath, "exported_json_data", "skeletons")
         os.makedirs(skeletons_dir, exist_ok=True)
-        
+
+        # If a dict is provided, write one file per key as name.json
+        if isinstance(all_skl_data, dict):
+            created_files = []
+            for key, value in all_skl_data.items():
+                filename = f"{key}.json"
+                filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_', '.')).rstrip()
+                filename = filename.replace(' ', '_')
+                if not filename.endswith('.json'):
+                    filename += '.json'
+                out_path = os.path.join(skeletons_dir, filename)
+                with open(out_path, "w", encoding="utf-8") as f:
+                    json.dump(value, f, indent=2, ensure_ascii=False)
+                created_files.append(filename)
+            message = f"Successfully created {len(created_files)} skeleton files in {skeletons_dir}:\n" + "\n".join(f"- {fn}" for fn in created_files)
+            print(message)
+            return True, message
+
+        # Otherwise assume list-like and write one file per entry
         created_files = []
-        
-        for i, skl_data in enumerate(all_skl_data):
-            # Generate filename based on skeleton data or use index
+        for i, skl_data in enumerate(all_skl_data or []):
             filename = f"skeleton_{i:03d}.json"
-            
-            # Try to get a better filename from the data if available
             if isinstance(skl_data, dict):
                 if "name" in skl_data:
                     filename = f"{skl_data['name']}.json"
@@ -590,28 +598,18 @@ def generate_individual_skl_files(all_skl_data: List[Dict[str, Any]], basepath: 
                     filename = f"{skl_data['filename']}.json"
                 elif "skeleton_name" in skl_data:
                     filename = f"{skl_data['skeleton_name']}.json"
-            
-            # Clean filename for filesystem
+
             filename = "".join(c for c in filename if c.isalnum() or c in (' ', '-', '_', '.')).rstrip()
             filename = filename.replace(' ', '_')
-            
-            # Ensure .json extension
             if not filename.endswith('.json'):
                 filename += '.json'
-            
-            # Create file path
+
             file_path = os.path.join(skeletons_dir, filename)
-            
-            # Write individual skeleton file
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(skl_data, f, indent=2, ensure_ascii=False)
-            
             created_files.append(filename)
-        
-        message = f"Successfully created {len(created_files)} individual skeleton files in {skeletons_dir}:\n"
-        for filename in created_files:
-            message += f"- {filename}\n"
-        
+
+        message = f"Successfully created {len(created_files)} individual skeleton files in {skeletons_dir}:\n" + "\n".join(f"- {fn}" for fn in created_files)
         print(message)
         return True, message
         

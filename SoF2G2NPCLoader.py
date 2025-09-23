@@ -4,10 +4,11 @@ from typing import cast
 from .SoF2G2Constants import SkeletonFixes
 from .SoF2G2DataCache import get_npcs_folder_data_cached
 from . import SoF2G2DataCache as DataCache
+from . import SoF2G2Exporter
 from . import SoF2G2Scene
 from . import SoF2G2GLA
 from . import frames_parser
-from . import skl_parser
+# skl parsing is handled within exporter now
 
 
 def find_skin_data_by_file_value(skin_data: dict, file_name: str):
@@ -57,40 +58,18 @@ def find_character_template_by_key(npcs_data, key):
 
 
 def handle_load_npc_file(op):
-    _, npcs_files_data = get_npcs_folder_data_cached(op.basepath)
+    # Export everything in one go; no preloading here
+    success, message, all_data = SoF2G2Exporter.export_all_data(op.basepath)
+    if success:
+        op.report({"INFO"}, message)
+        print(message)
+
+    # Now fetch data needed for loading the selected NPC
+    npcs_files_data = all_data["npcs"]
 
     npcs_data, character_template = find_character_template_by_key(
         npcs_files_data, op.npc_selected
     )
-
-    # lese alle skl dateien aus basepath/skeletons folder,parse mit skl_parser.py und speichere sie im array all_skl_data
-    all_skl_data = []
-    for skl_file in os.listdir(os.path.join(op.basepath, "skeletons")):
-        if skl_file.endswith(".skl"):
-            skl_data = skl_parser.parse_skl(
-                open(
-                    os.path.join(op.basepath, "skeletons", skl_file),
-                    "r",
-                    encoding="utf-8",
-                ).read()
-            )
-            # Add filename to the parsed data
-            if isinstance(skl_data, dict):
-                skl_data["filename"] = skl_file
-            all_skl_data.append(skl_data)
-
-    success, message = DataCache.generate_npc_json_results(
-        npcs_data, op.basepath
-    )
-    if success:
-        op.report({"INFO"}, message)
-        print(message)
-    
-    # Generate individual SKL files
-    success_skl, message_skl = DataCache.generate_individual_skl_files(all_skl_data, op.basepath)
-    if success_skl:
-        op.report({"INFO"}, message_skl)
-        print(message_skl)
 
     if character_template:
         print(f"Found character template for {op.npc_selected}:")
@@ -108,6 +87,10 @@ def handle_load_npc_file(op):
         _, all_g2skin_files_data = DataCache.get_skins(
             getattr(op, "basepath", ""), character_model_path
         )
+
+        if not all_g2skin_files_data:
+            op.report({"ERROR"}, "No g2skin file found! Check your loaded .npc file definition if you load one.")
+            return {"CANCELLED"}
 
         character_template_skin_files = character_template.get("char_template", {}).get(
             "Skin", {}
@@ -127,8 +110,17 @@ def handle_load_npc_file(op):
             )
             return {"CANCELLED"}
 
-        g2_skin_file_name = character_template_skin_information.get("File")
-        print(f"Loading .g2skin file: {g2_skin_file_name}.g2skin")
+        if not character_template_skin_information:
+            #if no skin found we try first g2skin file in all_g2skin_files_data
+            g2_skin_file_name = next(iter(all_g2skin_files_data.keys()), None)
+            if not g2_skin_file_name:
+                op.report({"ERROR"}, "No g2skin file found! Check your loaded .npc file definition if you load one.")
+                return {"CANCELLED"}
+        else:
+            #if skin found we use the first file name from the character template
+            g2_skin_file_name = character_template_skin_information.get("File")
+
+        print(f"Loading .g2skin file: {g2_skin_file_name}")
         selected_g2skin_data = find_skin_data_by_file_value(
             all_g2skin_files_data, g2_skin_file_name
         )
