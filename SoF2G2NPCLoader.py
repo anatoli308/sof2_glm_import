@@ -73,14 +73,6 @@ def handle_load_npc_file(op):
 
     if character_template:
         print(f"Found character template for {op.npc_selected}:")
-        parent_template = character_template.get("group_info", {}).get(
-            "ParentTemplate", None
-        )
-        if parent_template:
-            print(
-                f"NPC got a Parent NPC template #TODO load it later: {parent_template}"
-            )
-
         character_model_path = character_template.get("char_template", {}).get(
             "Model", None
         )
@@ -88,39 +80,86 @@ def handle_load_npc_file(op):
             getattr(op, "basepath", ""), character_model_path
         )
 
+        g2_skin_file_name = None
+        parent_char_template_skin_information = None
         if not all_g2skin_files_data:
-            op.report({"ERROR"}, "No g2skin file found! Check your loaded .npc file definition if you load one.")
-            return {"CANCELLED"}
-
-        character_template_skin_files = character_template.get("char_template", {}).get(
-            "Skin", {}
-        )
-        if isinstance(character_template_skin_files, dict):
-            character_template_skin_information = character_template_skin_files
-        elif isinstance(character_template_skin_files, list):
-            character_template_skin_information = (
-                character_template_skin_files[0]
-                if character_template_skin_files
-                else None
+            parent_template = character_template.get("group_info", {}).get(
+                "ParentTemplate", None
             )
-        else:
-            print(
-                "In deiner .npc Datei sind die Skin Einträge fehlerhaft (wrong type):",
-                type(character_template_skin_files),
-            )
-            return {"CANCELLED"}
+            if parent_template:
+                print(
+                    f"NPC got a Parent NPC template #TODO load it later: {parent_template}"
+                )
+                _, parent_char_template_data = find_character_template_by_key(
+                    npcs_files_data, parent_template
+                )
+                if parent_char_template_data:
+                    character_model_path = parent_char_template_data.get(
+                        "char_template", {}
+                    ).get("Model", None)
+                    _, all_g2skin_files_data = DataCache.get_skins(
+                        getattr(op, "basepath", ""), character_model_path
+                    )
+                    parent_char_template_skin_files = parent_char_template_data.get(
+                        "char_template", {}
+                    ).get("Skin", {})
+                    if isinstance(parent_char_template_skin_files, dict):
+                        parent_char_template_skin_information = (
+                            parent_char_template_skin_files
+                        )
+                    elif isinstance(parent_char_template_skin_files, list):
+                        parent_char_template_skin_information = (
+                            parent_char_template_skin_files[0]
+                        )
+                    else:
+                        print(
+                            "In deiner Parent .npc Datei sind die Skin Einträge fehlerhaft (wrong type):",
+                            type(parent_char_template_skin_files),
+                        )
+                        return {"CANCELLED"}
 
-        if not character_template_skin_information:
-            #if no skin found we try first g2skin file in all_g2skin_files_data
-            g2_skin_file_name = next(iter(all_g2skin_files_data.keys()), None)
-            if not g2_skin_file_name:
-                op.report({"ERROR"}, "No g2skin file found! Check your loaded .npc file definition if you load one.")
+            if not parent_char_template_skin_information:
+                op.report(
+                    {"ERROR"},
+                    "No g2skin file found! Check your loaded .npc file definition if you load one.",
+                )
                 return {"CANCELLED"}
-        else:
-            #if skin found we use the first file name from the character template
-            g2_skin_file_name = character_template_skin_information.get("File")
+            else:
+                g2_skin_file_name = parent_char_template_skin_information.get("File")
 
-        print(f"Loading .g2skin file: {g2_skin_file_name}")
+        if not g2_skin_file_name:
+            character_template_skin_files = character_template.get(
+                "char_template", {}
+            ).get("Skin", {})
+            if isinstance(character_template_skin_files, dict):
+                character_template_skin_information = character_template_skin_files
+            elif isinstance(character_template_skin_files, list):
+                character_template_skin_information = (
+                    character_template_skin_files[0]
+                    if character_template_skin_files
+                    else None
+                )
+            else:
+                print(
+                    "In deiner .npc Datei sind die Skin Einträge fehlerhaft (wrong type):",
+                    type(character_template_skin_files),
+                )
+                return {"CANCELLED"}
+
+            if not character_template_skin_information:
+                # if no skin found we try first g2skin file in all_g2skin_files_data
+                g2_skin_file_name = next(iter(all_g2skin_files_data.keys()), None)
+                if not g2_skin_file_name:
+                    op.report(
+                        {"ERROR"},
+                        "No g2skin file found! Check your loaded .npc file definition if you load one.",
+                    )
+                    return {"CANCELLED"}
+            else:
+                # if skin found we use the first file name from the character template
+                g2_skin_file_name = character_template_skin_information.get("File")
+
+        print(f"Loading .g2skin file: {g2_skin_file_name}.g2skin")
         selected_g2skin_data = find_skin_data_by_file_value(
             all_g2skin_files_data, g2_skin_file_name
         )
