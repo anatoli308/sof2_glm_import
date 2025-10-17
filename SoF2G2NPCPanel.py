@@ -92,5 +92,14 @@ def draw_glm_import_panel(layout, operator):
         row = layout.row()
         row.label(text="e.g. C:\\SoF2\\base")
         row = layout.row()
+        row.label(text=f"{operator.basepath}", icon="CHECKMARK")
+        row = layout.row()
         row.label(text="or any .glm in your SoF2 base path!")
+
+        # restliche Optionen
+        layout.prop(operator, "scale")
+        layout.prop(operator, "loadAnimations")
+        if operator.loadAnimations == "RANGE":
+            layout.prop(operator, "startFrame")
+            layout.prop(operator, "numFrames")
 

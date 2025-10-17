@@ -188,7 +188,7 @@ class MaterialManager:
         # 3) Wenn immer noch nichts gefunden -> Fallback (no texture)
         if not base_texture_path:
             print(f"Texture not found: {shader}")
-            mat.diffuse_color = (1, 0, 1, 1)  # Pink fallback
+            ##mat.diffuse_color = (1, 0, 1, 1)  # Pink fallback
             return mat
 
         # 4) Suche Sidecar maps (normal, roughness, metallic, ao, emission)
