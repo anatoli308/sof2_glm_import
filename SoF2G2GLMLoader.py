@@ -82,7 +82,12 @@ def handle_load_glm_file(op):
         data_frames_file_path = os.path.normpath(
             base_path + "/" + glafile + "_mp.frames"
         )
-        glafile = glafile + "_mp"
+        if not os.path.exists(data_frames_file_path):
+            # Versuche ohne '_mp'
+            data_frames_file_path = os.path.normpath(
+                base_path + "/" + glafile + ".frames"
+            )
+        
         print(f"Loading .frames file: {data_frames_file_path}")
         text = open(
             data_frames_file_path,
@@ -90,7 +95,13 @@ def handle_load_glm_file(op):
             encoding="utf-8",
         ).read()
         data_frames_file = frames_parser.parse_frames(text)
-
+        
+        gla_with_mp = glafile + "_mp"
+        gla_path_with_mp = os.path.normpath(base_path + "/" + gla_with_mp + ".gla")
+        if os.path.exists(gla_path_with_mp):
+            glafile = gla_with_mp
+        # sonst bleibt glafile wie es ist (ohne _mp)
+        
         print(f"Loading GLA file: {glafile} ")
         loadAnimations = SoF2G2GLA.AnimationLoadMode[op.loadAnimations]
         success, message = scene.loadFromGLA(

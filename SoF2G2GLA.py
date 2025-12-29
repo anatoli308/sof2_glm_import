@@ -121,6 +121,24 @@ class MdxaBoneOffsets:
 
 
 # originally called MdxaSkel_t, but I find that name misleading
+def rebuild_bone_hierarchy(bones: List["MdxaBone"]) -> None:
+    """
+    Rebuild parent-child relationships for all bones to ensure consistency.
+    This ensures that for every bone, if bone.parent == i, then bones[i].children includes bone.index,
+    and vice versa.
+    """
+    # Clear all children and numChildren
+    for bone in bones:
+        bone.children = []
+        bone.numChildren = 0
+    # Rebuild children lists from parent indices
+    for bone in bones:
+        if bone.parent != -1:
+            parent_bone = bones[bone.parent]
+            if bone.index not in parent_bone.children:
+                parent_bone.children.append(bone.index)
+                parent_bone.numChildren += 1
+
 class MdxaBone:
     def __init__(self):
         self.name = ""
@@ -287,12 +305,10 @@ class MdxaSkel:
         This ensures Unity recognizes the pelvis as the skinned mesh renderer root
         instead of the model_root.
         """
-        # Find pelvis bone (common names: "pelvis", "pelvis_root", "hip", "hips")
+        # Find pelvis bone (common names: "pelvis")
         pelvis_bone = None
         pelvis_candidates = [
-            "pelvis", "pelvis_root", "hip", "hips", "pelvis_bone",
-            "pelvisbone", "pelvis_root_bone", "pelvisroot",
-            "hip_bone", "hipbone", "hips_bone", "hipsbone"
+            "pelvis", 
         ]
         
         for bone in self.bones:
@@ -344,6 +360,8 @@ class MdxaSkel:
         
         print(f"Successfully made {pelvis_bone.name} the root bone with {current_root.name} as child")
         
+        # Rebuild hierarchy before verifying
+        rebuild_bone_hierarchy(self.bones)
         # Verify the hierarchy is still valid
         self._verify_bone_hierarchy()
 
@@ -1422,7 +1440,7 @@ class GLA:
             self.skeleton_object.parent = scene_root
 
             # **NEW: Make pelvis the root bone for Unity compatibility (existing armature)**
-            self.skeleton._make_pelvis_root_bone()
+            #self.skeleton._make_pelvis_root_bone()
 
             # add animations, if any
             if useAnimation:

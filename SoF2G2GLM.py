@@ -1207,7 +1207,7 @@ class MdxmLODCollection:
     def loadFromFile(self, file: BinaryIO, header: MdxmHeader) -> None:
         for i in range(header.numLODs):
             if i > 0:
-                break  # TODO: support multiple LODs - ANATOLI
+                break  # TODO: support multiple LODs later- ANATOLI
             startPos = file.tell()
             curLOD = MdxmLOD.loadFromFile(file, i, header)
             if file.tell() != startPos + curLOD.ofsEnd:
