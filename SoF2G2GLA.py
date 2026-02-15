@@ -487,6 +487,7 @@ class MdxaAnimation:
     def __init__(self):
         self.frames: List[MdxaFrame] = []
         self.bonePool = MdxaBonePool()
+        self.animation_clips: List[Dict] = []  # List of animation clip info dictionaries
 
     def loadFromFile(
         self, file: BinaryIO, header: MdxaHeader, startFrame: int, numFrames: int, data_frames_file: dict

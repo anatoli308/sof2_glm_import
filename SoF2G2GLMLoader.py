@@ -70,8 +70,9 @@ def handle_load_glm_file(op):
 
         scale = op.scale / 100
         scene = SoF2G2Scene.Scene(base_path)
+        glm_final_path = "/".join(parts[base_index + 1:])
         success, message = scene.loadFromGLM(
-            "/".join(parts[-4:]),
+            glm_final_path,
             {},
         )
         if not success:
@@ -79,22 +80,24 @@ def handle_load_glm_file(op):
             return {"FINISHED"}
 
         glafile = scene.getRequestedGLA()
-        data_frames_file_path = os.path.normpath(
-            base_path + "/" + glafile + "_mp.frames"
-        )
-        if not os.path.exists(data_frames_file_path):
-            # Versuche ohne '_mp'
-            data_frames_file_path = os.path.normpath(
-                base_path + "/" + glafile + ".frames"
-            )
-        
-        print(f"Loading .frames file: {data_frames_file_path}")
-        text = open(
-            data_frames_file_path,
-            "r",
-            encoding="utf-8",
-        ).read()
-        data_frames_file = frames_parser.parse_frames(text)
+
+        data_frames_file_path_mp = os.path.normpath(base_path + "/" + glafile + "_mp.frames")
+        data_frames_file_path = None
+        if os.path.exists(data_frames_file_path_mp):
+            data_frames_file_path = data_frames_file_path_mp
+        else:
+            data_frames_file_path_plain = os.path.normpath(base_path + "/" + glafile + ".frames")
+            if os.path.exists(data_frames_file_path_plain):
+                data_frames_file_path = data_frames_file_path_plain
+
+        if data_frames_file_path:
+            print(f"Loading .frames file: {data_frames_file_path}")
+            with open(data_frames_file_path, "r", encoding="utf-8") as f:
+                text = f.read()
+            data_frames_file = frames_parser.parse_frames(text)
+        else:
+            print(".frames Datei nicht gefunden, data_frames_file wird auf None gesetzt.")
+            data_frames_file = None
         
         gla_with_mp = glafile + "_mp"
         gla_path_with_mp = os.path.normpath(base_path + "/" + gla_with_mp + ".gla")

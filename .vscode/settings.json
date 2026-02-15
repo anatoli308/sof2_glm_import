@@ -21,6 +21,7 @@
         "reportPossiblyUnboundVariable":"none",
         "reportOptionalMemberAccess":"none",
         "reportMissingTypeArgument":"none",
-        "reportArgumentType":"none"
+        "reportArgumentType":"none",
+        "reportUnnecessaryIsInstance":"none"
     },
 }
