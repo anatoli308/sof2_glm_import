@@ -121,24 +121,6 @@ class MdxaBoneOffsets:
 
 
 # originally called MdxaSkel_t, but I find that name misleading
-def rebuild_bone_hierarchy(bones: List["MdxaBone"]) -> None:
-    """
-    Rebuild parent-child relationships for all bones to ensure consistency.
-    This ensures that for every bone, if bone.parent == i, then bones[i].children includes bone.index,
-    and vice versa.
-    """
-    # Clear all children and numChildren
-    for bone in bones:
-        bone.children = []
-        bone.numChildren = 0
-    # Rebuild children lists from parent indices
-    for bone in bones:
-        if bone.parent != -1:
-            parent_bone = bones[bone.parent]
-            if bone.index not in parent_bone.children:
-                parent_bone.children.append(bone.index)
-                parent_bone.numChildren += 1
-
 class MdxaBone:
     def __init__(self):
         self.name = ""
@@ -299,101 +281,8 @@ class MdxaSkel:
                 )
         return True, NoError
 
-    def _make_pelvis_root_bone(self) -> None:
-        """
-        Make the pelvis bone the root bone for Unity compatibility.
-        This ensures Unity recognizes the pelvis as the skinned mesh renderer root
-        instead of the model_root.
-        """
-        # Find pelvis bone (common names: "pelvis")
-        pelvis_bone = None
-        pelvis_candidates = [
-            "pelvis", 
-        ]
-        
-        for bone in self.bones:
-            if bone.name.lower() in pelvis_candidates:
-                pelvis_bone = bone
-                break
-        
-        if not pelvis_bone:
-            print("Warning: No pelvis bone found. Common names: pelvis, pelvis_root, hip, hips")
-            print(f"Available bones: {[bone.name for bone in self.bones]}")
-            return
-        
-        print(f"Found pelvis bone: {pelvis_bone.name}, making it the root bone")
-        
-        # Find the current root bone (parent = -1)
-        current_root = None
-        for bone in self.bones:
-            if bone.parent == -1:
-                current_root = bone
-                break
-        
-        if not current_root:
-            print("Warning: No root bone found")
-            return
-        
-        if current_root == pelvis_bone:
-            print("Pelvis is already the root bone")
-            return
-        
-        print(f"Current root bone: {current_root.name}, making it a child of pelvis")
-        
-        # Make pelvis the new root (parent = -1)
-        pelvis_bone.parent = -1
-        
-        # Make the current root a child of the pelvis
-        current_root.parent = pelvis_bone.index
-        
-        # Update pelvis children list
-        if current_root.index not in pelvis_bone.children:
-            pelvis_bone.children.append(current_root.index)
-            pelvis_bone.numChildren += 1
-        
-        # Remove current root from its old parent's children list
-        for bone in self.bones:
-            if current_root.index in bone.children:
-                bone.children.remove(current_root.index)
-                bone.numChildren -= 1
-                break
-        
-        print(f"Successfully made {pelvis_bone.name} the root bone with {current_root.name} as child")
-        
-        # Rebuild hierarchy before verifying
-        rebuild_bone_hierarchy(self.bones)
-        # Verify the hierarchy is still valid
-        self._verify_bone_hierarchy()
-
-    def _verify_bone_hierarchy(self) -> None:
-        """
-        Verify that the bone hierarchy is still valid after making pelvis the root.
-        """
-        # Check that there's exactly one root bone (parent = -1)
-        root_bones = [bone for bone in self.bones if bone.parent == -1]
-        if len(root_bones) != 1:
-            print(f"Warning: Expected 1 root bone, found {len(root_bones)}")
-            for bone in root_bones:
-                print(f"  Root bone: {bone.name}")
-        
-        # Check that all bones have valid parent indices
-        for bone in self.bones:
-            if bone.parent != -1:
-                if bone.parent >= len(self.bones) or bone.parent < 0:
-                    print(f"Warning: Bone {bone.name} has invalid parent index {bone.parent}")
-        
-        # Check that children lists are consistent
-        for bone in self.bones:
-            for child_index in bone.children:
-                if child_index >= len(self.bones) or child_index < 0:
-                    print(f"Warning: Bone {bone.name} has invalid child index {child_index}")
-                else:
-                    child_bone = self.bones[child_index]
-                    if child_bone.parent != bone.index:
-                        print(f"Warning: Inconsistent parent-child relationship: {bone.name} -> {child_bone.name}")
-
     def saveToBlender(
-        self, scene_root: bpy.types.Object, skeletonFixes: SoF2G2Constants.SkeletonFixes
+        self, scene_root: bpy.types.Object, skeletonFixes: SoF2G2Constants.SkeletonFixes,
     ) -> Tuple[bool, ErrorMessage]:
         #  Creation
         # create armature
@@ -408,10 +297,7 @@ class MdxaSkel:
         #  Set the armature as active and go to edit mode to add bones
         bpy.context.view_layer.objects.active = self.armature_object
         bpy.ops.object.mode_set(mode="EDIT")
-        
-        # **NEW: Make pelvis the root bone for Unity compatibility**
-        self._make_pelvis_root_bone()
-        
+
         # list of indices of already created bones - only those bones with this as parent will be added
         createdBonesIndices = [-1]
         # bones yet to be created
@@ -846,6 +732,7 @@ class MdxaAnimation:
                     
                     # Process bone transformations (same as original)
                     offsets: Dict[int, mathutils.Matrix] = {}
+                    anim_root_delta = [0.0, 0.0, 0.0]
                     for index in hierarchyOrder:
                         mode_start = time.time()
                         bpy.ops.object.mode_set(mode="POSE", toggle=False)
@@ -872,6 +759,12 @@ class MdxaAnimation:
                         transformation = matrix_overload_cast(offset @ basePoses[index])
                         # flip axes as required for blender bone
                         SoF2G2Math.GLABoneRotToBlender(transformation)
+                        # Pin root bone at rest position, shift all others by the same delta
+                        if mdxaBone.parent == -1:
+                            for ax in range(3):
+                                anim_root_delta[ax] = transformation[ax][3] - basePoses[index][ax][3]
+                        for ax in range(3):
+                            transformation[ax][3] -= anim_root_delta[ax]
                         matrix_time = time.time() - matrix_start
                         timing_stats['matrix_calculations'] += matrix_time
                         clip_timing_stats['matrix_calculations'] += matrix_time
@@ -966,6 +859,7 @@ class MdxaAnimation:
 
                 # absolute offset matrices by bone index
                 offsets: Dict[int, mathutils.Matrix] = {}
+                anim_root_delta = [0.0, 0.0, 0.0]
                 for index in hierarchyOrder:
                     # **PROFILING: Time mode switches**
                     mode_start = time.time()
@@ -991,6 +885,12 @@ class MdxaAnimation:
                     transformation = matrix_overload_cast(offset @ basePoses[index])
                     # flip axes as required for blender bone
                     SoF2G2Math.GLABoneRotToBlender(transformation)
+                    # Pin root bone at rest position, shift all others by the same delta
+                    if mdxaBone.parent == -1:
+                        for ax in range(3):
+                            anim_root_delta[ax] = transformation[ax][3] - basePoses[index][ax][3]
+                    for ax in range(3):
+                        transformation[ax][3] -= anim_root_delta[ax]
                     fallback_timing_stats['matrix_calculations'] += time.time() - matrix_start
 
                     # **PROFILING: Time bone transformations**
@@ -1163,7 +1063,7 @@ class GLA:
             # load reference GLA
             referenceGLA = GLA()
             success, message = referenceGLA.loadFromFile(
-                gla_reference_abs, AnimationLoadMode.NONE, 0, 0
+                gla_reference_abs, AnimationLoadMode.NONE, 0, 0, {}
             )
             if not success:
                 return False, ErrorMessage(f"Could not load reference GLA: {message}")
@@ -1440,9 +1340,6 @@ class GLA:
             # set its parent to the scene_root (not strictly speaking necessary but keeps output consistent)
             self.skeleton_object.parent = scene_root
 
-            # **NEW: Make pelvis the root bone for Unity compatibility (existing armature)**
-            #self.skeleton._make_pelvis_root_bone()
-
             # add animations, if any
             if useAnimation:
                 profiler.start("applying animations")
@@ -1454,14 +1351,14 @@ class GLA:
 
                     print("=== Profile start ===")
                     cProfile.runctx(
-                        "self.animation.saveToBlender(self.skeleton, self.skeleton_object, self.header.scale)",
+                        "self.animation.saveToBlender(self.skeleton, self.skeleton_object, self.header.scale, data_frames_file)",
                         globals(),
                         locals(),
                     )
                     print("=== Profile stop ===")
                 else:
                     self.animation.saveToBlender(
-                        self.skeleton, self.skeleton_object, self.header.scale, data_frames_file    
+                        self.skeleton, self.skeleton_object, self.header.scale, data_frames_file
                     )
                 profiler.stop("applying animations")
 

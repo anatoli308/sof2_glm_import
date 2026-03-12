@@ -111,10 +111,12 @@ class GLAImport(bpy.types.Operator):
         # output to blender
         success, message = scene.saveToBlender(
             scale,
-            "",
+            {},
+            {},
             False,
             loadAnimations != SoF2G2GLA.AnimationLoadMode.NONE,
             SkeletonFixes[self.skeletonFixes],
+            {},
         )
         if not success:
             self.report({"ERROR"}, message)
