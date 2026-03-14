@@ -593,16 +593,7 @@ class MdxaAnimation:
         import time
 
         startTime = time.time()
-        print("Starting SAFE animation import with filtering...")
-        
-        # **PROFILING: Track detailed timing**
-        import time
-        timing_stats = {
-            'mode_switches': 0,
-            'keyframe_inserts': 0,
-            'matrix_calculations': 0,
-            'bone_transformations': 0
-        }
+        print("Starting animation import...")
         
         #   Bone Position Set Order
         # bones have to be set in hierarchical order - their position depends on their parent's absolute position, after all.
@@ -650,12 +641,26 @@ class MdxaAnimation:
         # **NEW: Show filtered animation info**
         if hasattr(self, 'animation_clips') and self.animation_clips:
             print(f"Using {len(self.animation_clips)} filtered animation clips:")
-            #for clip in self.animation_clips:
-            #    print(f"  - {clip['name']}: frames {clip['start_frame']}-{clip['end_frame']} ({clip['duration']} frames)")
         else:
             print(f"No clips defined, using all {numFrames} frames")
 
-        # **NEW: Create separate actions for each clip OR use original logic**
+        # Pre-compute Blender bone rest matrices for direct matrix_basis computation.
+        # This lets us set bone local transforms without needing per-bone mode switches
+        # (which were ~90% of the total import time).
+        bpy.ops.object.mode_set(mode="POSE", toggle=False)
+        bone_rest: Dict[int, mathutils.Matrix] = {}
+        bone_rest_inv: Dict[int, mathutils.Matrix] = {}
+        rest_relative_inv: Dict[int, mathutils.Matrix] = {}
+        for bone_info in skeleton.bones:
+            rest_mat = bones[bone_info.index].bone.matrix_local.copy()
+            bone_rest[bone_info.index] = rest_mat
+            bone_rest_inv[bone_info.index] = rest_mat.inverted()
+        for bone_info in skeleton.bones:
+            if bone_info.parent == -1:
+                rest_relative_inv[bone_info.index] = bone_rest_inv[bone_info.index]
+            else:
+                rest_relative_inv[bone_info.index] = bone_rest_inv[bone_info.index] @ bone_rest[bone_info.parent]
+
         if hasattr(self, 'animation_clips') and self.animation_clips:
             print("Creating separate Blender actions for each clip...")
             
@@ -664,40 +669,23 @@ class MdxaAnimation:
                 armature.animation_data_create()
             
             # Process each clip separately
-            for index, clip in enumerate(self.animation_clips):
+            for clip_idx, clip in enumerate(self.animation_clips):
                 clip_name = clip["name"]
                 start_frame = clip["start_frame"]
                 duration = clip["duration"]
                 
-                clip_timing_stats = {
-                    'mode_switches': 0.0,
-                    'keyframe_inserts': 0.0,
-                    'matrix_calculations': 0.0,
-                    'bone_transformations': 0.0
-                }
-                
-                # **PROFILING: Show clip progress every 3 clips (fallback style)**
-                if index % 3 == 0 and index > 0:
+                # Show clip progress every 3 clips
+                if clip_idx % 3 == 0 and clip_idx > 0:
                     total_elapsed = time.time() - startTime
-                    clips_processed = index
-                    clips_remaining = len(self.animation_clips) - clips_processed
-                    
-                    # Calculate overall performance metrics
-                    total_mode_switches = timing_stats['mode_switches']
-                    avg_clip_time = total_elapsed / clips_processed if clips_processed > 0 else 0
-                    estimated_remaining = avg_clip_time * clips_remaining
-                    
+                    avg_clip_time = total_elapsed / clip_idx
+                    estimated_remaining = avg_clip_time * (len(self.animation_clips) - clip_idx)
                     print(
-                        "Clip {}/{} - {:.2%} - remaining time: ca. {:.0f}m {:.0f}s - "
-                        "Mode switches: {:.1f}s ({:.1f}%) - Avg switch: {:.1f}ms".format(
-                            clips_processed,
+                        "Clip {}/{} - {:.2%} - remaining time: ca. {:.0f}m {:.0f}s".format(
+                            clip_idx,
                             len(self.animation_clips),
-                            clips_processed / len(self.animation_clips),
+                            clip_idx / len(self.animation_clips),
                             estimated_remaining // 60,
                             estimated_remaining % 60,
-                            total_mode_switches,
-                            total_mode_switches / total_elapsed * 100,
-                            (total_mode_switches / (clips_processed * len(hierarchyOrder) * 2)) * 1000 if clips_processed > 0 else 0
                         )
                     )
                 
@@ -716,7 +704,6 @@ class MdxaAnimation:
                 # **Set scene frame range for this clip (0 to duration)**
                 scene.frame_start = 0
                 scene.frame_end = duration
-                #print(f"  DEBUG: Set action frame range to 0-{duration} and FPS to {clip_fps} for clip {clip_name}")
                 
                 # Process frames for this clip
                 for local_frame_num in range(duration):
@@ -727,25 +714,15 @@ class MdxaAnimation:
                         
                     frame = self.frames[global_frame_num]
                     
-                    # Set current frame (local frame number 0 to duration-1)
-                    scene.frame_set(local_frame_num)
-                    
-                    # Process bone transformations (same as original)
                     offsets: Dict[int, mathutils.Matrix] = {}
+                    animated_world: Dict[int, mathutils.Matrix] = {}
+                    animated_world_inv: Dict[int, mathutils.Matrix] = {}
                     anim_root_delta = [0.0, 0.0, 0.0]
                     for index in hierarchyOrder:
-                        mode_start = time.time()
-                        bpy.ops.object.mode_set(mode="POSE", toggle=False)
-                        mode_switch_time = time.time() - mode_start
-                        timing_stats['mode_switches'] += mode_switch_time
-                        clip_timing_stats['mode_switches'] += mode_switch_time
-                        
                         mdxaBone = skeleton.bones[index]
                         assert mdxaBone.index == index
                         bonePoolIndex = frame.boneIndices[index]
                         
-                        # **PROFILING: Time matrix calculations**
-                        matrix_start = time.time()
                         # get offset transformation matrix, relative to parent
                         offset = downcast(List[SoF2G2Math.CompBone], self.bonePool.bones)[
                             bonePoolIndex
@@ -753,7 +730,6 @@ class MdxaAnimation:
                         # turn into absolute offset matrix (already is if this is top level bone)
                         if mdxaBone.parent != -1:
                             offset = matrix_overload_cast(offsets[mdxaBone.parent] @ offset)
-                        # save this absolute offset for use by children
                         offsets[index] = offset
                         # calculate the actual position
                         transformation = matrix_overload_cast(offset @ basePoses[index])
@@ -765,33 +741,27 @@ class MdxaAnimation:
                                 anim_root_delta[ax] = transformation[ax][3] - basePoses[index][ax][3]
                         for ax in range(3):
                             transformation[ax][3] -= anim_root_delta[ax]
-                        matrix_time = time.time() - matrix_start
-                        timing_stats['matrix_calculations'] += matrix_time
-                        clip_timing_stats['matrix_calculations'] += matrix_time
 
-                        # **PROFILING: Time bone transformations**
-                        bone_start = time.time()
+                        # Store animated world-space transform for child computations
+                        animated_world[index] = mathutils.Matrix(transformation)
+
+                        # Compute matrix_basis directly — no mode switch needed
+                        parent_idx = mdxaBone.parent
+                        if parent_idx == -1:
+                            matrix_basis = matrix_overload_cast(rest_relative_inv[index] @ transformation)
+                        else:
+                            if parent_idx not in animated_world_inv:
+                                animated_world_inv[parent_idx] = animated_world[parent_idx].inverted()
+                            matrix_basis = matrix_overload_cast(
+                                rest_relative_inv[index] @ animated_world_inv[parent_idx] @ transformation
+                            )
+
+                        loc, rot, _ = matrix_basis.decompose()
                         pose_bone = bones[index]
-                        pose_bone.matrix = transformation
-                        pose_bone.scale = [1, 1, 1]
-                        bone_time = time.time() - bone_start
-                        timing_stats['bone_transformations'] += bone_time
-                        clip_timing_stats['bone_transformations'] += bone_time
-                        
-                        # **PROFILING: Time keyframe inserts**
-                        keyframe_start = time.time()
-                        pose_bone.keyframe_insert("location")
-                        pose_bone.keyframe_insert("rotation_quaternion")
-                        keyframe_time = time.time() - keyframe_start
-                        timing_stats['keyframe_inserts'] += keyframe_time
-                        clip_timing_stats['keyframe_inserts'] += keyframe_time
-                        
-                        # **PROFILING: Time mode switches**
-                        mode_start = time.time()
-                        bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
-                        mode_switch_time = time.time() - mode_start
-                        timing_stats['mode_switches'] += mode_switch_time
-                        clip_timing_stats['mode_switches'] += mode_switch_time
+                        pose_bone.location = loc
+                        pose_bone.rotation_quaternion = rot
+                        pose_bone.keyframe_insert("location", frame=local_frame_num)
+                        pose_bone.keyframe_insert("rotation_quaternion", frame=local_frame_num)
                 
             # **Restore original FPS and set scene back to first frame**
             scene.render.fps = 20  # Restore default FPS #TODO default FPS Anatoli wechselbar machen??
@@ -801,77 +771,39 @@ class MdxaAnimation:
             # **FALLBACK: Original behavior for all frames**
             print("Processing all frames as single animation. MAY TAKE VERY LONG TIME!!...")
             
-            # **PROFILING: Initialize timing stats for fallback**
-            fallback_timing_stats = {
-                'mode_switches': 0.0,
-                'keyframe_inserts': 0.0,
-                'matrix_calculations': 0.0,
-                'bone_transformations': 0.0,
-                'frame_setting': 0.0,
-                'progress_display': 0.0
-            }
-            
-            # show progress every 1000 steps, but at least 10 times)
             nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
             lastFrameNum = 0
 
-            #   Export animation (ORIGINAL WORKING CODE)
             for frameNum, frame in enumerate(self.frames):
                 # show progress bar / remaining time
                 if time.time() >= nextProgressDisplayTime:
-                    progress_start = time.time()
                     numProcessedFrames = frameNum - lastFrameNum
                     framesRemaining = numFrames - frameNum
-                    # only take the frames since the last update into account since the speed varies.
-                    # speed's roughly inversely proportional to the current frame number so I could use that to predict remaining time...
                     timeRemaining = (
                         PROGRESS_UPDATE_INTERVAL * framesRemaining / numProcessedFrames
                     )
-
-                    # Calculate current performance metrics for fallback
-                    total_mode_switches = fallback_timing_stats['mode_switches']
-                    avg_switch_time = total_mode_switches / (frameNum * len(hierarchyOrder) * 2) if frameNum > 0 else 0
-                    current_elapsed_time = time.time() - startTime
-                    mode_switch_percentage = total_mode_switches / current_elapsed_time * 100 if current_elapsed_time > 0 else 0
-                    
                     print(
-                        "Frame {}/{} - {:.2%} - remaining time: ca. {:.0f}m {:.0f}s - "
-                        "Mode switches: {:.1f}s ({:.1f}%) - Avg switch: {:.1f}ms".format(
+                        "Frame {}/{} - {:.2%} - remaining time: ca. {:.0f}m {:.0f}s".format(
                             frameNum,
                             numFrames,
                             frameNum / numFrames,
                             timeRemaining // 60,
                             timeRemaining % 60,
-                            total_mode_switches,
-                            mode_switch_percentage,
-                            avg_switch_time * 1000
                         )
                     )
-
                     lastFrameNum = frameNum
                     nextProgressDisplayTime = time.time() + PROGRESS_UPDATE_INTERVAL
-                    fallback_timing_stats['progress_display'] += time.time() - progress_start
-
-                # set current frame
-                frame_set_start = time.time()
-                scene.frame_set(frameNum)
-                fallback_timing_stats['frame_setting'] += time.time() - frame_set_start
 
                 # absolute offset matrices by bone index
                 offsets: Dict[int, mathutils.Matrix] = {}
+                animated_world: Dict[int, mathutils.Matrix] = {}
+                animated_world_inv: Dict[int, mathutils.Matrix] = {}
                 anim_root_delta = [0.0, 0.0, 0.0]
                 for index in hierarchyOrder:
-                    # **PROFILING: Time mode switches**
-                    mode_start = time.time()
-                    bpy.ops.object.mode_set(mode="POSE", toggle=False)
-                    fallback_timing_stats['mode_switches'] += time.time() - mode_start
-                    
                     mdxaBone = skeleton.bones[index]
                     assert mdxaBone.index == index
                     bonePoolIndex = frame.boneIndices[index]
                     
-                    # **PROFILING: Time matrix calculations**
-                    matrix_start = time.time()
                     # get offset transformation matrix, relative to parent
                     offset = downcast(List[SoF2G2Math.CompBone], self.bonePool.bones)[
                         bonePoolIndex
@@ -879,7 +811,6 @@ class MdxaAnimation:
                     # turn into absolute offset matrix (already is if this is top level bone)
                     if mdxaBone.parent != -1:
                         offset = matrix_overload_cast(offsets[mdxaBone.parent] @ offset)
-                    # save this absolute offset for use by children
                     offsets[index] = offset
                     # calculate the actual position
                     transformation = matrix_overload_cast(offset @ basePoses[index])
@@ -891,73 +822,35 @@ class MdxaAnimation:
                             anim_root_delta[ax] = transformation[ax][3] - basePoses[index][ax][3]
                     for ax in range(3):
                         transformation[ax][3] -= anim_root_delta[ax]
-                    fallback_timing_stats['matrix_calculations'] += time.time() - matrix_start
 
-                    # **PROFILING: Time bone transformations**
-                    bone_start = time.time()
+                    # Store animated world-space transform for child computations
+                    animated_world[index] = mathutils.Matrix(transformation)
+
+                    # Compute matrix_basis directly — no mode switch needed
+                    parent_idx = mdxaBone.parent
+                    if parent_idx == -1:
+                        matrix_basis = matrix_overload_cast(rest_relative_inv[index] @ transformation)
+                    else:
+                        if parent_idx not in animated_world_inv:
+                            animated_world_inv[parent_idx] = animated_world[parent_idx].inverted()
+                        matrix_basis = matrix_overload_cast(
+                            rest_relative_inv[index] @ animated_world_inv[parent_idx] @ transformation
+                        )
+
+                    loc, rot, _ = matrix_basis.decompose()
                     pose_bone = bones[index]
-                    # pose_bone.matrix = transformation * scaleMatrix
-                    pose_bone.matrix = transformation
-                    # in the _humanoid face, the scale gets changed. that messes the re-export up. FIXME: understand why. Is there a problem?
-                    pose_bone.scale = [1, 1, 1]
-                    fallback_timing_stats['bone_transformations'] += time.time() - bone_start
-                    
-                    # **PROFILING: Time keyframe inserts**
-                    keyframe_start = time.time()
-                    pose_bone.keyframe_insert("location")
-                    pose_bone.keyframe_insert("rotation_quaternion")
-                    fallback_timing_stats['keyframe_inserts'] += time.time() - keyframe_start
-                    
-                    # **PROFILING: Time mode switches**
-                    mode_start = time.time()
-                    # hackish way to force the matrix to update. FIXME: this seems to slow the process down a lot
-                    bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
-                    fallback_timing_stats['mode_switches'] += time.time() - mode_start
+                    pose_bone.location = loc
+                    pose_bone.rotation_quaternion = rot
+                    pose_bone.keyframe_insert("location", frame=frameNum)
+                    pose_bone.keyframe_insert("rotation_quaternion", frame=frameNum)
 
             scene.frame_current = 1
 
+        bpy.ops.object.mode_set(mode="OBJECT", toggle=False)
+
         endTime = time.time()
-        print(f"SAFE Animation import completed in {endTime - startTime:.2f} seconds")
+        print(f"Animation import completed in {endTime - startTime:.2f} seconds")
         print(f"Processed {numFrames} frames with {len(bones)} bones")
-        
-        # **PROFILING: Print detailed timing breakdown**
-        total_time = endTime - startTime
-        print("\n=== PERFORMANCE BREAKDOWN ===")
-        
-        # Use appropriate timing stats based on which path was taken
-        if self.animation_clips:
-            # Clip-based processing
-            print(f"Mode Switches: {timing_stats['mode_switches']:.2f}s ({timing_stats['mode_switches']/total_time*100:.1f}%)")
-            print(f"Keyframe Inserts: {timing_stats['keyframe_inserts']:.2f}s ({timing_stats['keyframe_inserts']/total_time*100:.1f}%)")
-            print(f"Matrix Calculations: {timing_stats['matrix_calculations']:.2f}s ({timing_stats['matrix_calculations']/total_time*100:.1f}%)")
-            print(f"Bone Transformations: {timing_stats['bone_transformations']:.2f}s ({timing_stats['bone_transformations']/total_time*100:.1f}%)")
-            print(f"Other Operations: {total_time - sum(timing_stats.values()):.2f}s ({(total_time - sum(timing_stats.values()))/total_time*100:.1f}%)")
-        else:
-            # Fallback processing
-            print(f"Mode Switches: {fallback_timing_stats['mode_switches']:.2f}s ({fallback_timing_stats['mode_switches']/total_time*100:.1f}%)")
-            print(f"Keyframe Inserts: {fallback_timing_stats['keyframe_inserts']:.2f}s ({fallback_timing_stats['keyframe_inserts']/total_time*100:.1f}%)")
-            print(f"Matrix Calculations: {fallback_timing_stats['matrix_calculations']:.2f}s ({fallback_timing_stats['matrix_calculations']/total_time*100:.1f}%)")
-            print(f"Bone Transformations: {fallback_timing_stats['bone_transformations']:.2f}s ({fallback_timing_stats['bone_transformations']/total_time*100:.1f}%)")
-            print(f"Frame Setting: {fallback_timing_stats['frame_setting']:.2f}s ({fallback_timing_stats['frame_setting']/total_time*100:.1f}%)")
-            print(f"Progress Display: {fallback_timing_stats['progress_display']:.2f}s ({fallback_timing_stats['progress_display']/total_time*100:.1f}%)")
-            print(f"Other Operations: {total_time - sum(fallback_timing_stats.values()):.2f}s ({(total_time - sum(fallback_timing_stats.values()))/total_time*100:.1f}%)")
-            
-            # **DETAILED MODE SWITCH ANALYSIS**
-            total_mode_switches = fallback_timing_stats['mode_switches']
-            total_bones = len(bones)
-            total_frames = numFrames
-            switches_per_bone_per_frame = 2  # POSE -> OBJECT for each bone
-            total_expected_switches = total_frames * total_bones * switches_per_bone_per_frame
-            avg_switch_time = total_mode_switches / total_expected_switches if total_expected_switches > 0 else 0
-            
-            print("\n=== MODE SWITCH ANALYSIS ===")
-            print(f"Total Mode Switches: {total_expected_switches:,}")
-            print(f"Average Time per Switch: {avg_switch_time*1000:.2f}ms")
-            print(f"Mode Switch Overhead: {total_mode_switches/total_time*100:.1f}% of total time")
-            print(f"Estimated Time Saved (no switches): {total_time - total_mode_switches:.2f}s")
-            print("=============================")
-        
-        print("=============================")
 
 
 class AnimationLoadMode(Enum):
