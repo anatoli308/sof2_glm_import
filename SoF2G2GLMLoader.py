@@ -5,6 +5,7 @@ from . import SoF2G2Scene
 from . import SoF2G2GLA
 from . import frames_parser
 from .SoF2G2Constants import SkeletonFixes
+from . import SoF2G2Constants
 from typing import cast
 
 
@@ -69,6 +70,8 @@ def handle_load_glm_file(op):
         # selected_glm_file = selected_glm_file.removesuffix(".glm")
 
         scale = op.scale / 100
+        if getattr(op, 'unityMode', False):
+            scale = SoF2G2Constants.UNITY_SCALE
         scene = SoF2G2Scene.Scene(base_path)
         glm_final_path = "/".join(parts[base_index + 1:])
         success, message = scene.loadFromGLM(
@@ -132,6 +135,14 @@ def handle_load_glm_file(op):
         )
         if not success:
             op.report({"ERROR"}, message)
+            return {"FINISHED"}
+
+        # Apply Unity corrections if enabled
+        if getattr(op, 'unityMode', False):
+            success, message = SoF2G2Scene.apply_unity_corrections()
+            if not success:
+                op.report({"WARNING"}, str(message))
+
         op.report({"INFO"}, f"NPC loaded: {op.npc_selected}")
         return {"FINISHED"}
     else:

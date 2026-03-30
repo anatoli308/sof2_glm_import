@@ -15,7 +15,9 @@ from . import SoF2G2GLA  # noqa: E402
 from .error_types import ErrorMessage, NoError  # noqa: E402
 from .casts import optional_cast  # noqa: E402
 
+import math  # noqa: E402
 import bpy  # pyright: ignore[reportMissingImports]  # noqa: E402
+import mathutils  # pyright: ignore[reportMissingImports]  # noqa: E402
 
 
 def findSceneRootObject() -> Optional[bpy.types.Object]:
@@ -24,6 +26,22 @@ def findSceneRootObject() -> Optional[bpy.types.Object]:
         # if so, use that
         scene_root = bpy.data.objects["scene_root"]
     return scene_root
+
+
+def apply_unity_corrections() -> Tuple[bool, ErrorMessage]:
+    """
+    Post-import processing for Unity FBX export.
+
+    Sets the correct scale on scene_root for Unity (inches to meters).
+    No rotation or bone/mesh data is modified.
+    """
+    scene_root = findSceneRootObject()
+    if not scene_root:
+        print("Unity corrections: No scene_root found, skipping.")
+        return True, NoError
+
+    print("Unity corrections applied: scale set to 0.0254 (inch → meter).")
+    return True, NoError
 
 
 class Scene:

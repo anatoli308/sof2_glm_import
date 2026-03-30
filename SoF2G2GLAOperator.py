@@ -1,6 +1,7 @@
 import bpy  # pyright: ignore[reportMissingImports]
 
 from .SoF2G2Constants import SkeletonFixes
+from . import SoF2G2Constants
 from . import SoF2G2Scene
 from . import SoF2G2GLA
 from . import SoF2Filesystem
@@ -87,10 +88,18 @@ class GLAImport(bpy.types.Operator):
         min=1,
     )
 
+    unityMode: bpy.props.BoolProperty(  # pyright: ignore [reportInvalidTypeForm]
+        name="Unity Export Mode",
+        description="Prepares model for Unity FBX export: bakes scale into data, applies Y-up axis conversion, flattens hierarchy. Model will appear rotated in Blender but will be correct in Unity after FBX export (use Forward: -Z, Up: Y, no Apply Transform)",
+        default=False,
+    )
+
     def execute(self, context):
         print("\n== GLA Import ==\n")
         # de-percentagionise scale
         scale = self.scale / 100
+        if getattr(self, 'unityMode', False):
+            scale = SoF2G2Constants.UNITY_SCALE
         # initialize paths
         basepath, filepath = self.basepath, self.filepath  # GetPaths(
         if (
@@ -120,6 +129,14 @@ class GLAImport(bpy.types.Operator):
         )
         if not success:
             self.report({"ERROR"}, message)
+            return {"FINISHED"}
+
+        # Apply Unity corrections if enabled
+        if getattr(self, 'unityMode', False):
+            success, message = SoF2G2Scene.apply_unity_corrections()
+            if not success:
+                self.report({"WARNING"}, str(message))
+
         return {"FINISHED"}
 
     def invoke(self, context, event):

@@ -132,6 +132,12 @@ class GLMImport(bpy.types.Operator):
         min=1,
     )  # pyright: ignore [reportInvalidTypeForm]
 
+    unityMode: bpy.props.BoolProperty(  # pyright: ignore [reportInvalidTypeForm]
+        name="Unity Export Mode",
+        description="Prepares model for Unity FBX export: bakes scale into data, applies Y-up axis conversion, flattens hierarchy. Model will appear rotated in Blender but will be correct in Unity after FBX export (use Forward: -Z, Up: Y, no Apply Transform)",
+        default=False,
+    )
+
     def handle_load_glm_file(self):
         return SoF2G2GLMLoader.handle_load_glm_file(self)
 

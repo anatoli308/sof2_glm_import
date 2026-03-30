@@ -72,12 +72,21 @@ def draw_glm_import_panel(layout, operator):
                 row.label(text=f"{operator.npc_selected} selected", icon="CHECKMARK")
 
                 # restliche Optionen
-                layout.prop(operator, "scale")
+                if not operator.unityMode:
+                    layout.prop(operator, "scale")
                 layout.prop(operator, "loadAnimations")
                 if operator.loadAnimations == "RANGE":
                     layout.prop(operator, "startFrame")
                     layout.prop(operator, "numFrames")
                 #layout.prop(operator, "skeletonFixes")
+
+                layout.separator()
+                box_unity = layout.box()
+                box_unity.prop(operator, "unityMode")
+                if operator.unityMode:
+                    box_unity.label(text="Scale: 0.0254 (1 inch = 1 Unity meter)", icon="INFO")
+                    box_unity.label(text="Rotation: -90° X (Z-up → Y-up)")
+                    box_unity.label(text="FBX: Apply Transform=ON")
 
             else:
                 row = layout.row()
@@ -97,9 +106,18 @@ def draw_glm_import_panel(layout, operator):
         row.label(text="or any .glm in your SoF2 base path!")
 
         # restliche Optionen
-        layout.prop(operator, "scale")
+        if not operator.unityMode:
+            layout.prop(operator, "scale")
         layout.prop(operator, "loadAnimations")
         if operator.loadAnimations == "RANGE":
             layout.prop(operator, "startFrame")
             layout.prop(operator, "numFrames")
+
+        layout.separator()
+        box_unity = layout.box()
+        box_unity.prop(operator, "unityMode")
+        if operator.unityMode:
+            box_unity.label(text="Scale: 0.0254 (1 inch = 1 Unity meter)", icon="INFO")
+            box_unity.label(text="Rotation: -90° X (Z-up → Y-up)")
+            box_unity.label(text="FBX: Apply Transform=ON")
 

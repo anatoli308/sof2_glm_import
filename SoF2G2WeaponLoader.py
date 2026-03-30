@@ -27,6 +27,9 @@ def handle_load_weapon_file(op):
         return {"CANCELLED"}
 
     scale = op.scale / 100
+    if getattr(op, 'unityMode', False):
+        from . import SoF2G2Constants
+        scale = SoF2G2Constants.UNITY_SCALE
 
     scene = SoF2G2Scene.Scene(basepath)
     success, message = scene.loadFromGLM(
@@ -78,6 +81,13 @@ def handle_load_weapon_file(op):
     )
     if not success:
         op.report({"ERROR"}, message)
+        return {"FINISHED"}
+
+    # Apply Unity corrections if enabled
+    if getattr(op, 'unityMode', False):
+        success, message = SoF2G2Scene.apply_unity_corrections()
+        if not success:
+            op.report({"WARNING"}, str(message))
 
     op.report({"INFO"}, f"Weapon/Object loaded: {op.weapon_selected}")
     return {"FINISHED"}

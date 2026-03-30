@@ -3,6 +3,9 @@ from typing import Dict, List
 
 MAX_QPATH = 64  # cannot be changed without adjusting file format & engine
 
+# SoF2/Quake uses 1 unit = 1 inch, Unity uses meters. 1 inch = 0.0254 m.
+UNITY_SCALE = 0.0254
+
 # gla format
 GLA_IDENT = b"2LGA"
 GLA_VERSION = 6

@@ -2,6 +2,7 @@ import os
 from typing import cast
 
 from .SoF2G2Constants import SkeletonFixes
+from . import SoF2G2Constants
 from .SoF2G2DataCache import get_npcs_folder_data_cached
 from . import SoF2G2DataCache as DataCache
 from . import SoF2G2Exporter
@@ -195,6 +196,8 @@ def handle_load_npc_file(op):
         )
 
         scale = op.scale / 100
+        if getattr(op, 'unityMode', False):
+            scale = SoF2G2Constants.UNITY_SCALE
 
         scene = SoF2G2Scene.Scene(op.basepath)
         success, message = scene.loadFromGLM(character_model_path, selected_g2skin_data)
@@ -247,6 +250,14 @@ def handle_load_npc_file(op):
         )
         if not success:
             op.report({"ERROR"}, message)
+            return {"FINISHED"}
+
+        # Apply Unity corrections if enabled
+        if getattr(op, 'unityMode', False):
+            success, message = SoF2G2Scene.apply_unity_corrections()
+            if not success:
+                op.report({"WARNING"}, str(message))
+
         op.report({"INFO"}, f"NPC loaded: {op.npc_selected}")
         return {"FINISHED"}
 
